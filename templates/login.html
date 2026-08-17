@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تسجيل الدخول — مكانك لمراقبة جريدة المواد</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: 'Cairo', sans-serif;
+      background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%);
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0; padding: 20px;
+    }
+    .login-card {
+      background: #fff;
+      border-radius: 24px;
+      padding: 48px 40px;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+      text-align: center;
+    }
+    @media (max-width: 480px) {
+      .login-card { padding: 32px 20px; border-radius: 18px; }
+    }
+    .login-logo {
+      width: 80px; height: 80px;
+      background: linear-gradient(135deg, #059669, #10b981);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 2.2rem; color: #fff;
+    }
+    .login-card h1 { font-size: 1.4rem; font-weight: 900; color: #064e3b; margin: 0 0 4px; }
+    .login-card .sub { font-size: .88rem; color: #6b7280; margin: 0 0 28px; }
+
+    /* Step indicators */
+    .steps-bar { display: flex; gap: 8px; justify-content: center; margin-bottom: 24px; }
+    .step-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #d1fae5; transition: background .3s;
+    }
+    .step-dot.active { background: #059669; }
+    .step-dot.done { background: #10b981; }
+
+    .fg { margin-bottom: 16px; text-align: right; }
+    .fg label { display: block; font-size: .82rem; font-weight: 700; color: #374151; margin-bottom: 6px; }
+    .fg .input-wrap {
+      display: flex; align-items: center;
+      border: 1.5px solid #d1fae5; border-radius: 12px;
+      background: #f0fdf4; overflow: hidden;
+    }
+    .fg .input-wrap i { padding: 0 14px; color: #10b981; font-size: 1rem; flex-shrink: 0; }
+    .fg input {
+      flex: 1; padding: 12px 4px 12px 14px;
+      border: none; background: transparent;
+      font-family: 'Cairo', sans-serif; font-size: .95rem;
+      outline: none; color: #111; min-width: 0;
+    }
+    .fg input[dir="ltr"] { text-align: left; direction: ltr; letter-spacing: 3px; }
+    .fg .input-wrap:focus-within { border-color: #10b981; box-shadow: 0 0 0 3px rgba(16,185,129,.15); }
+
+    .btn-login {
+      width: 100%; padding: 14px;
+      background: linear-gradient(135deg, #059669, #10b981);
+      color: #fff; border: none; border-radius: 12px;
+      font-family: 'Cairo', sans-serif; font-size: 1rem; font-weight: 800;
+      cursor: pointer; transition: opacity .2s, transform .1s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-login:hover { opacity: .9; }
+    .btn-login:active { transform: scale(.98); }
+    .btn-login:disabled { opacity: .6; cursor: not-allowed; }
+
+    .error-msg {
+      background: #fef2f2; border: 1px solid #fecaca;
+      color: #b91c1c; border-radius: 10px;
+      padding: 10px 14px; font-size: .88rem;
+      margin-bottom: 16px; display: none;
+      animation: shake .4s;
+    }
+    @keyframes shake {
+      0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)}
+    }
+
+    .totp-hint {
+      background: #f0fdf4; border: 1px solid #bbf7d0;
+      color: #064e3b; border-radius: 10px;
+      padding: 10px 14px; font-size: .84rem;
+      margin-bottom: 16px; text-align: right; line-height: 1.6;
+    }
+
+    .student-link { margin-top: 20px; font-size: .85rem; color: #6b7280; }
+    .student-link a { color: #059669; font-weight: 700; text-decoration: none; }
+    .student-link a:hover { text-decoration: underline; }
+
+    /* 2FA big code field */
+    .totp-input {
+      font-size: 2rem !important;
+      letter-spacing: 8px !important;
+      text-align: center !important;
+      font-weight: 800 !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="login-logo"><i class="fa-solid fa-shield-halved"></i></div>
+    <h1>لوحة تحكم الادمن</h1>
+    <p class="sub">مكانك لمراقبة جريدة المواد — جامعة البلقاء</p>
+
+    <!-- Step indicators -->
+    <div class="steps-bar" id="stepsBar">
+      <div class="step-dot active" id="dot1" title="اسم المستخدم وكلمة المرور"></div>
+      <div class="step-dot" id="dot2" title="رمز المصادقة الثنائية"></div>
+    </div>
+
+    <div class="error-msg" id="errMsg"></div>
+
+    <!-- Step 1: username + password -->
+    <div id="step1">
+      <form onsubmit="doLogin(event)">
+        <div class="fg">
+          <label>اسم المستخدم</label>
+          <div class="input-wrap">
+            <i class="fa-solid fa-user"></i>
+            <input type="text" id="username" placeholder="أدخل اسم المستخدم" required autofocus autocomplete="username">
+          </div>
+        </div>
+        <div class="fg">
+          <label>كلمة المرور</label>
+          <div class="input-wrap">
+            <i class="fa-solid fa-lock"></i>
+            <input type="password" id="pwd" placeholder="أدخل كلمة المرور" required autocomplete="current-password">
+          </div>
+        </div>
+        <button type="submit" class="btn-login" id="btnLogin">
+          <i class="fa-solid fa-arrow-left"></i>
+          متابعة
+        </button>
+      </form>
+    </div>
+
+    <!-- Step 2: TOTP (shown if 2FA enabled) -->
+    <div id="step2" style="display:none;">
+      <div class="totp-hint">
+        <i class="fa-solid fa-mobile-screen" style="color:#059669"></i>
+        افتح تطبيق <strong>Google Authenticator</strong> أو <strong>Authy</strong>
+        وأدخل الكود المكوّن من 6 أرقام.
+      </div>
+      <form onsubmit="doTotp(event)">
+        <div class="fg">
+          <label>كود المصادقة الثنائية</label>
+          <div class="input-wrap">
+            <i class="fa-solid fa-key"></i>
+            <input type="text" id="totpCode" class="totp-input" dir="ltr"
+              inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
+              placeholder="000000" required autocomplete="one-time-code">
+          </div>
+        </div>
+        <button type="submit" class="btn-login" id="btnTotp">
+          <i class="fa-solid fa-right-to-bracket"></i>
+          دخول
+        </button>
+      </form>
+      <button onclick="goBack()" style="
+        width:100%; margin-top:10px; padding:10px;
+        background:none; border:1.5px solid #d1d5db; border-radius:10px;
+        font-family:'Cairo',sans-serif; cursor:pointer; color:#6b7280;
+        font-size:.9rem;
+      ">
+        <i class="fa-solid fa-rotate-right"></i> رجوع لإعادة المحاولة
+      </button>
+    </div>
+
+    <div class="student-link">
+      للطلاب — <a href="/student">صفحة الاشتراك والمواد</a>
+    </div>
+  </div>
+
+  <script>
+    // Cached credentials for step-2 (TOTP)
+    let _usr = '', _pwd = '';
+
+    function showError(msg) {
+      const el = document.getElementById('errMsg');
+      el.textContent = msg;
+      el.style.display = 'block';
+      // Re-trigger animation
+      el.style.animation = 'none';
+      el.offsetHeight; // reflow
+      el.style.animation = '';
+    }
+    function hideError() { document.getElementById('errMsg').style.display = 'none'; }
+
+    async function doLogin(e) {
+      e.preventDefault();
+      hideError();
+      const btn = document.getElementById('btnLogin');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جارٍ التحقق...';
+
+      _usr = document.getElementById('username').value.trim();
+      _pwd = document.getElementById('pwd').value;
+
+      const res = await fetch('/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: _usr, password: _pwd })
+      });
+      const data = await res.json();
+
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> متابعة';
+
+      if (data.success) {
+        window.location.href = '/admin';
+      } else if (data.need_totp) {
+        // Move to step 2
+        document.getElementById('step1').style.display = 'none';
+        document.getElementById('step2').style.display = 'block';
+        document.getElementById('dot1').classList.remove('active');
+        document.getElementById('dot1').classList.add('done');
+        document.getElementById('dot2').classList.add('active');
+        setTimeout(() => document.getElementById('totpCode').focus(), 50);
+      } else {
+        showError(data.message || 'بيانات الدخول غير صحيحة');
+        document.getElementById('pwd').value = '';
+      }
+    }
+
+    async function doTotp(e) {
+      e.preventDefault();
+      hideError();
+      const btn = document.getElementById('btnTotp');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جارٍ التحقق...';
+
+      const code = document.getElementById('totpCode').value.trim();
+      const res = await fetch('/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: _usr, password: _pwd, totp_code: code })
+      });
+      const data = await res.json();
+
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> دخول';
+
+      if (data.success) {
+        window.location.href = '/admin';
+      } else {
+        showError(data.message || 'كود غير صحيح');
+        document.getElementById('totpCode').value = '';
+        document.getElementById('totpCode').focus();
+      }
+    }
+
+    function goBack() {
+      hideError();
+      document.getElementById('step2').style.display = 'none';
+      document.getElementById('step1').style.display = 'block';
+      document.getElementById('dot2').classList.remove('active');
+      document.getElementById('dot1').classList.remove('done');
+      document.getElementById('dot1').classList.add('active');
+      document.getElementById('pwd').value = '';
+      _usr = ''; _pwd = '';
+    }
+  </script>
+</body>
+</html>

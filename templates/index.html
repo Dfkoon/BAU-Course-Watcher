@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مكانك لمراقبة جريدة المواد — جامعة البلقاء التطبيقية</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="app-wrap">
+
+  <!-- ═══ HEADER ════════════════════════════════════════════════════════════ -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="logo"><i class="fa-solid fa-graduation-cap"></i></div>
+      <div>
+        <h1>مكانك <span>لمراقبة جريدة المواد</span></h1>
+        <p>كل تغيير على الجريدة الرسمية يظهر هنا فوراً بدون ريفريش</p>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <!-- مؤشر الاتصال الحي -->
+      <div class="live-badge" id="liveBadge">
+        <span class="live-dot"></span>
+        <span id="liveLabel">جاري الاتصال...</span>
+      </div>
+      <!-- آخر تحديث -->
+      <div class="last-update" id="lastUpdateEl">
+        <i class="fa-regular fa-clock"></i>
+        <span id="lastUpdateText">—</span>
+      </div>
+      <!-- زر الإعدادات -->
+      <a href="/admin/settings" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);border-radius:8px;color:#fff;font-size:.82rem;text-decoration:none;font-weight:700;" title="إعدادات الأدمن والـ 2FA">
+        <i class="fa-solid fa-gear"></i>
+        الإعدادات
+      </a>
+      <!-- زر الخروج -->
+      <a href="/admin/logout" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:8px;color:#fff;font-size:.82rem;text-decoration:none;font-weight:700;" title="تسجيل الخروج">
+        <i class="fa-solid fa-right-from-bracket"></i>
+        خروج
+      </a>
+    </div>
+  </header>
+
+  <!-- ═══ STATS ══════════════════════════════════════════════════════════════ -->
+  <section class="stats-row">
+    <div class="stat emerald">
+      <i class="fa-solid fa-book-open-reader"></i>
+      <div><strong id="sTotal">—</strong><small>شعبة مراقبة</small></div>
+    </div>
+    <div class="stat green">
+      <i class="fa-solid fa-circle-check"></i>
+      <div><strong id="sOpen">—</strong><small>شعبة متاحة</small></div>
+    </div>
+    <div class="stat red">
+      <i class="fa-solid fa-lock"></i>
+      <div><strong id="sClosed">—</strong><small>شعبة مغلقة</small></div>
+    </div>
+    <div class="stat blue">
+      <i class="fa-solid fa-users"></i>
+      <div><strong id="sSubs">—</strong><small>طالب مشترك</small></div>
+    </div>
+    <div class="stat amber">
+      <i class="fa-solid fa-bolt-lightning"></i>
+      <div><strong id="sChanges">—</strong><small>تغيير اليوم</small></div>
+    </div>
+    <div class="stat purple">
+      <i class="fa-solid fa-paper-plane"></i>
+      <div><strong id="sNotifs">—</strong><small>إشعار مُرسل</small></div>
+    </div>
+  </section>
+
+  <!-- Desktop Usage Notice Banner -->
+  <div class="desktop-notice-banner" id="desktopNoticeBanner" style="max-width:1400px; margin: 0 auto 16px;">
+    <span><i class="fa-solid fa-laptop" style="color:#D97706; margin-left:6px"></i> <strong>ملاحظة:</strong> يُفضّل استخدام النظام عبر جهاز الحاسوب (الكمبيوتر) للحصول على أفضل تجربة تصفح وعرض متكامل للجدول.</span>
+    <button type="button" class="close-btn" onclick="document.getElementById('desktopNoticeBanner').style.display='none'" title="إغلاق التنبيه">✕</button>
+  </div>
+
+  <!-- ═══ MAIN GRID ══════════════════════════════════════════════════════════ -->
+  <div class="main-grid">
+
+    <!-- ── Live Feed (Right Column) ────────────────────────────────────────── -->
+    <aside class="live-panel">
+      <div class="panel-header">
+        <h2><span class="pulse-dot"></span> بث التغييرات المباشر</h2>
+        <button class="btn-ghost" onclick="clearFeed()"><i class="fa-solid fa-broom"></i> مسح</button>
+      </div>
+
+      <div class="feed-empty" id="feedEmpty">
+        <i class="fa-solid fa-satellite-dish fa-2x" style="color:#10b981;margin-bottom:12px"></i>
+        <p>يراقب النظام جريدة البلقاء الآن...</p>
+        <p style="color:#9ca3af;font-size:13px">أي تغيير سيظهر هنا فوراً</p>
+      </div>
+
+      <div class="feed-list" id="feedList"></div>
+    </aside>
+
+    <!-- ── Tabs (Left Column) ──────────────────────────────────────────────── -->
+    <div class="right-col">
+      <nav class="tabs">
+        <button class="tab active" data-tab="subscribe"><i class="fa-solid fa-bell-plus"></i> اشتراك جديد</button>
+        <button class="tab" data-tab="courses"><i class="fa-solid fa-table-list"></i> الجريدة الكاملة</button>
+        <button class="tab" data-tab="subscribers"><i class="fa-solid fa-users-gear"></i> المشتركون</button>
+        <button class="tab" data-tab="history"><i class="fa-solid fa-clock-rotate-left"></i> سجل التغييرات</button>
+      </nav>
+
+      <!-- Subscribe Form -->
+      <div class="pane active" id="subscribe">
+        <div class="card">
+          <h3><i class="fa-solid fa-bell"></i> سجّل ليصلك إشعار فور فتح الشعبة</h3>
+          <p class="sub-title">أي تغيير يُرصد لحظياً من الجريدة الرسمية ويُرسل مباشرة لبريدك</p>
+          <form id="subForm">
+            <div class="fg2">
+              <div class="fg">
+                <label>الاسم الكامل <span>*</span></label>
+                <input name="name" type="text" placeholder="أحمد محمد الخالد" required>
+              </div>
+              <div class="fg">
+                <label>البريد الإلكتروني <span>*</span></label>
+                <input name="email" type="email" placeholder="student@example.com" required>
+              </div>
+            </div>
+
+            <!-- Multi College Selection -->
+            <div class="fg">
+              <label><i class="fa-solid fa-building-columns"></i> الكليات المستهدفة (يمكن اختيار أكثر من كلية)</label>
+              <div class="multi-college-box">
+                <div class="college-select-btn" id="collegeSelectBtn" onclick="toggleCollegeDropdown()">
+                  <span id="collegeSelectBtnText">جميع كليات الجامعة (متابعة عامة)</span>
+                  <i class="fa-solid fa-chevron-down"></i>
+                </div>
+                <div class="college-dropdown hidden" id="collegeDropdown">
+                  <label class="college-checkbox-item all-item">
+                    <input type="checkbox" id="chkAllColleges" checked onchange="toggleAllColleges(this)">
+                    <span>جميع كليات الجامعة (متابعة عامة)</span>
+                  </label>
+                  <div class="college-checkbox-divider"></div>
+                  <div class="college-checkbox-list" id="collegeCheckboxList">
+                    <!-- Dynamically populated checkboxes for colleges -->
+                  </div>
+                </div>
+              </div>
+              <small>اختر كليات اهتمامك، أو حدّد جميع الكليات للمتابعة الشاملة</small>
+            </div>
+
+            <div class="fg ac-wrap">
+              <label>اسم المادة أو رمزها (اختياري عند اختيار الكليات)</label>
+              <input id="cqInput" name="course_query" type="text"
+                     placeholder="مثال: هيكلة البيانات أو CS201 (أو اتركه فارغاً لمتابعة كل مواد الكليات المختارة)"
+                     autocomplete="off">
+              <div id="acDrop" class="ac-drop hidden"></div>
+              <small>يقترح النظام المواد تلقائياً من الجريدة الحالية عند الكتابة</small>
+            </div>
+            <div class="fg">
+              <label>رقم الشعبة (فارغ = كل الشعب)</label>
+              <input name="section_query" type="text" placeholder="مثال: 1 أو 2">
+            </div>
+            <button class="btn-primary" type="submit">
+              <i class="fa-solid fa-paper-plane"></i> تفعيل الإشعار الفوري
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Courses Explorer -->
+      <div class="pane" id="courses">
+        <div class="card">
+          <div class="toolbar">
+            <div class="search-box">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input id="cSearch" type="text" placeholder="اسم المادة، رمزها، أو اسم المدرس...">
+            </div>
+            <select id="cCollege" onchange="loadDepartments(); loadCourses();"><option value="">كل الكليات</option></select>
+            <select id="cDept" onchange="loadCourses()"><option value="">كل الأقسام الأكاديمية</option></select>
+            <select id="cStatus" onchange="loadCourses()">
+              <option value="">كل الحالات</option>
+              <option value="1">متاحة</option>
+              <option value="3">مغلقة</option>
+              <option value="2">ملغاة</option>
+              <option value="NEW">مواد وشعب جديدة</option>
+            </select>
+            <button class="btn-sm" onclick="loadCourses()"><i class="fa-solid fa-filter"></i> تصفية</button>
+          </div>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead><tr>
+                <th>رقم المادة</th><th>اسم المادة</th><th>ش</th>
+                <th>الحالة</th><th>طبيعة المادة</th><th>الأوقات</th><th>المدرس</th><th>القاعة</th>
+                <th>الكلية والقسم</th><th>تتبع</th>
+              </tr></thead>
+              <tbody id="coursesTb">
+                <tr><td colspan="10" class="empty">جاري التحميل...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Subscribers -->
+      <div class="pane" id="subscribers">
+        <div class="card">
+          <div class="card-hdr">
+            <h3><i class="fa-solid fa-users"></i> الطلاب المشتركون</h3>
+            <button class="btn-sm" onclick="loadSubs()"><i class="fa-solid fa-rotate"></i> تحديث</button>
+          </div>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead><tr><th>#</th><th>الاسم</th><th>البريد</th><th>الكليات المختارة</th><th>المادة المتابعة</th><th>الشعبة</th><th>الحالة</th><th>إجراء</th></tr></thead>
+              <tbody id="subsTb"><tr><td colspan="8" class="empty">جاري التحميل...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Change History -->
+      <div class="pane" id="history">
+        <div class="card">
+          <div class="card-hdr">
+            <h3><i class="fa-solid fa-clock-rotate-left"></i> سجل التغييرات الكاملة</h3>
+            <div>
+              <button class="btn-sm" onclick="testEmail()"><i class="fa-solid fa-envelope"></i> تجربة إيميل</button>
+              <button class="btn-sm" onclick="loadHistory()"><i class="fa-solid fa-rotate"></i> تحديث</button>
+            </div>
+          </div>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead><tr><th>الوقت</th><th>المادة</th><th>ش</th><th>التغيير</th><th>قبل</th><th>بعد</th><th>الكلية</th></tr></thead>
+              <tbody id="historyTb"><tr><td colspan="7" class="empty">جاري التحميل...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /right-col -->
+  </div><!-- /main-grid -->
+
+  <!-- ═══ FOOTER ═════════════════════════════════════════════════════════════ -->
+  <footer>
+    <span>مكانك لمراقبة جريدة المواد — جامعة البلقاء التطبيقية &copy; 2026</span>
+    <span id="footerClients"></span>
+  </footer>
+
+</div><!-- /app-wrap -->
+
+<!-- Toast Container -->
+<div id="toasts"></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

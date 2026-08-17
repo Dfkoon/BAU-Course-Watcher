@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مكانك لمراقبة جريدة المواد — جامعة البلقاء التطبيقية</title>
+  <meta name="description" content="اشترك وتابع فتح المواد والشعب في جريدة جامعة البلقاء التطبيقية لحظة بلحظة">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    /* ── Top Bar Auth Controls ── */
+    body {
+      background-color: #FAF6EE !important;
+      background-image: radial-gradient(#E5DDCB 0.75px, #FAF6EE 0.75px) !important;
+      background-size: 16px 16px !important;
+    }
+    .student-hero {
+      background: linear-gradient(135deg, #004D40 0%, #064e3b 50%, #005C4B 100%);
+      border-bottom: 3px solid #D4AF37;
+      padding: 24px 24px 36px;
+      text-align: center;
+      color: #fff;
+      position: relative;
+    }
+    .top-auth-nav {
+      display: flex; justify-content: space-between; align-items: center;
+      width: 96%; max-width: 1750px; margin: 0 auto 20px;
+      gap: 12px; flex-wrap: wrap;
+    }
+    .auth-btn-group { display: flex; gap: 8px; align-items: center; }
+    .btn-auth-google {
+      background: #fff; color: #374151;
+      border: 1px solid #d1d5db; border-radius: 50px;
+      padding: 7px 16px; font-family: 'Cairo', sans-serif;
+      font-size: .85rem; font-weight: 700; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08); transition: transform .1s;
+    }
+    .btn-auth-google:hover { transform: translateY(-1px); }
+    .btn-auth-guest {
+      background: rgba(255,255,255,.15); color: #fff;
+      border: 1px solid rgba(255,255,255,.25); border-radius: 50px;
+      padding: 7px 16px; font-family: 'Cairo', sans-serif;
+      font-size: .85rem; font-weight: 700; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn-auth-guest:hover { background: rgba(255,255,255,.25); }
+
+    .user-pill {
+      background: rgba(255,255,255,.18); color: #fff;
+      border: 1px solid rgba(255,255,255,.3); border-radius: 50px;
+      padding: 6px 14px; font-size: .85rem; font-weight: 700;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn-my-subs {
+      background: #D4AF37; color: #00332C; border: none; border-radius: 50px;
+      padding: 7px 16px; font-family: 'Cairo', sans-serif;
+      font-size: .85rem; font-weight: 800; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px;
+      box-shadow: 0 2px 10px rgba(212,175,55,.3);
+    }
+    .btn-my-subs:hover { background: #b89332; color: #fff; }
+
+    .btn-logout {
+      background: rgba(239,68,68,.2); color: #fca5a5;
+      border: 1px solid rgba(239,68,68,.3); border-radius: 50px;
+      padding: 7px 12px; font-family: 'Cairo', sans-serif;
+      font-size: .85rem; font-weight: 700; cursor: pointer;
+    }
+    .btn-logout:hover { background: rgba(239,68,68,.4); color: #fff; }
+
+    .student-hero .logo-big {
+      width: 64px; height: 64px;
+      background: rgba(255,255,255,.15);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 14px;
+      font-size: 1.8rem;
+    }
+    .student-hero h1 { font-size: 1.8rem; font-weight: 900; margin: 0 0 6px; }
+    .student-hero h1 span { color: #6ee7b7; }
+    .student-hero p  { opacity: .88; font-size: .95rem; margin: 0; }
+    .live-pill {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.2);
+      border-radius: 50px;
+      padding: 5px 14px;
+      font-size: .82rem;
+      margin-top: 12px;
+    }
+    .live-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: #34d399; animation: pulse 1.4s infinite; }
+    @keyframes pulse { 0%,100%{ opacity:1; transform:scale(1); } 50%{ opacity:.5; transform:scale(1.3); } }
+
+    .student-wrap { width: 96%; max-width: 1750px; margin: 0 auto; padding: 24px 10px 60px; }
+
+    /* Cards */
+    .sub-card {
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 4px 24px rgba(100, 80, 50, 0.07);
+      padding: 30px 26px;
+      margin-bottom: 24px;
+      border: 1px solid #E6DEC8;
+    }
+    .sub-card h2 { font-size: 1.15rem; font-weight: 800; color: #004D40; margin: 0 0 20px; display: flex; align-items: center; gap: 10px; }
+    .sub-card h2 i { color: #005C4B; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media(max-width:560px){ .form-row { grid-template-columns: 1fr; } }
+
+    .fg { display: flex; flex-direction: column; gap: 6px; margin-bottom: 4px; }
+    .fg label { font-size: .8rem; font-weight: 700; color: #374151; }
+    .fg input, .fg select {
+      padding: 11px 14px;
+      border: 1.5px solid #E6DEC8;
+      border-radius: 10px;
+      background: #FDFBF7;
+      font-family: 'Cairo', sans-serif;
+      font-size: .95rem;
+      color: #111;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .fg input:focus, .fg select:focus {
+      border-color: #005C4B;
+      box-shadow: 0 0 0 3px rgba(0, 92, 75, 0.12);
+      background: #fff;
+    }
+
+    /* Multi college dropdown */
+    .multi-college-box { position: relative; }
+    .college-select-btn {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid #E6DEC8;
+      border-radius: 10px;
+      background: #FDFBF7;
+      font-family: 'Cairo', sans-serif;
+      font-size: .95rem;
+      color: #374151;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: space-between;
+      outline: none;
+    }
+    .college-dropdown {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0; left: 0;
+      background: #fff;
+      border: 1.5px solid #E6DEC8;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.12);
+      z-index: 100;
+      max-height: 220px;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+    .college-dropdown.open { display: block; }
+    .college-checkbox-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 16px; cursor: pointer; font-size: .9rem;
+    }
+    .college-checkbox-item:hover { background: #F5EFE1; }
+    .college-checkbox-item input[type=checkbox] { accent-color: #005C4B; width: 16px; height: 16px; }
+    .college-checkbox-item.all-item { font-weight: 700; border-bottom: 1px solid #E6DEC8; margin-bottom: 4px; }
+
+    /* Autocomplete */
+    .ac-wrap { position: relative; }
+    .ac-drop {
+      position: absolute; top: calc(100% + 4px); right: 0; left: 0;
+      background: #fff; border: 1.5px solid #E6DEC8; border-radius: 10px;
+      box-shadow: 0 8px 20px rgba(0,0,0,.1); z-index: 99;
+      max-height: 180px; overflow-y: auto;
+    }
+    .ac-drop.hidden { display: none; }
+    .ac-item { padding: 9px 14px; cursor: pointer; font-size: .9rem; border-bottom: 1px solid #f3f4f6; }
+    .ac-item:hover { background: #EBF8F5; color: #005C4B; }
+
+    .btn-subscribe {
+      width: 100%; margin-top: 18px;
+      padding: 13px;
+      background: linear-gradient(135deg, #004D40, #005C4B);
+      color: #fff;
+      border: none; border-radius: 12px;
+      font-family: 'Cairo', sans-serif;
+      font-size: 1rem; font-weight: 800;
+      cursor: pointer;
+      transition: opacity .2s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      box-shadow: 0 4px 14px rgba(0,77,64,.25);
+    }
+    .btn-subscribe:hover { opacity: .92; background: linear-gradient(135deg, #00332C, #004D40); }
+
+    /* My Subscriptions List */
+    .my-sub-item {
+      background: #FDFBF7; border: 1px solid #E6DEC8; border-radius: 12px;
+      padding: 14px 18px; margin-bottom: 10px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      flex-wrap: wrap;
+    }
+    .my-sub-info { font-size: .9rem; }
+    .my-sub-info strong { color: #004D40; display: block; font-size: .95rem; }
+    .my-sub-info small { color: #6b7280; }
+    .my-sub-actions { display: flex; gap: 8px; align-items: center; }
+    .btn-action-toggle {
+      padding: 6px 12px; border-radius: 8px; border: none;
+      font-family: 'Cairo', sans-serif; font-size: .8rem; font-weight: 700; cursor: pointer;
+    }
+    .btn-action-toggle.active { background: #d1fae5; color: #065f46; }
+    .btn-action-toggle.paused { background: #fef3c7; color: #92400e; }
+    .btn-action-delete {
+      padding: 6px 12px; border-radius: 8px; border: none;
+      background: #fee2e2; color: #991b1b;
+      font-family: 'Cairo', sans-serif; font-size: .8rem; font-weight: 700; cursor: pointer;
+    }
+
+    /* Courses Explorer */
+    .courses-card {
+      background: #fff; border-radius: 20px;
+      box-shadow: 0 4px 24px rgba(100, 80, 50, 0.07);
+      padding: 24px 20px; border: 1px solid #E6DEC8;
+    }
+    .courses-card h2 { font-size: 1.1rem; font-weight: 800; color: #004D40; margin: 0 0 18px; display: flex; align-items: center; gap: 10px; }
+    .courses-card h2 i { color: #10b981; }
+
+    .toolbar-s { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+    .toolbar-s .search-box {
+      flex: 1; min-width: 180px;
+      display: flex; align-items: center; gap: 8px;
+      background: #f9fafb; border: 1.5px solid #e5e7eb; border-radius: 10px;
+      padding: 9px 14px;
+    }
+    .toolbar-s .search-box input {
+      border: none; background: transparent; outline: none;
+      font-family: 'Cairo', sans-serif; font-size: .9rem; flex: 1;
+    }
+    .toolbar-s .search-box i { color: #9ca3af; }
+    .toolbar-s select {
+      padding: 9px 12px;
+      border: 1.5px solid #E6DEC8; border-radius: 10px;
+      background: #FDFBF7; font-family: 'Cairo', sans-serif; font-size: .88rem;
+      outline: none;
+    }
+    .toolbar-s .btn-filter {
+      padding: 9px 16px;
+      background: #004D40; color: #fff;
+      border: none; border-radius: 10px;
+      font-family: 'Cairo', sans-serif; font-size: .88rem; font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* Table */
+    .tbl-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid #E6DEC8; }
+    .tbl { width: 100%; border-collapse: collapse; font-size: .88rem; }
+    .tbl thead th {
+      background: #004D40; color: #fff;
+      padding: 11px 12px; text-align: right; font-weight: 700;
+      white-space: nowrap;
+      border-bottom: 2px solid #00332C;
+    }
+    .tbl thead th:first-child { border-radius: 0 10px 0 0; }
+    .tbl thead th:last-child  { border-radius: 10px 0 0 0; }
+    .tbl tbody tr:nth-child(even) { background: #FDFBF7; }
+    .tbl tbody tr:hover { background: #F5EFE1; }
+    .tbl tbody td { padding: 10px 12px; border-bottom: 1px solid #E6DEC8; vertical-align: middle; background: #fff; }
+    .tbl tbody tr:nth-child(even) td { background: #FDFBF7; }
+    .tbl tbody tr:hover td { background: #F5EFE1; }
+    .tbl tbody td.empty { text-align: center; color: #9ca3af; padding: 24px; background: #fff; }
+    .badge-open     { display:inline-block; background:#d1fae5; color:#065f46; padding:3px 10px; border-radius:50px; font-weight:700; font-size:.8rem; border:1px solid #a7f3d0; }
+    .badge-closed   { display:inline-block; background:#fee2e2; color:#991b1b; padding:3px 10px; border-radius:50px; font-weight:700; font-size:.8rem; border:1px solid #fecaca; }
+    .badge-cancelled{ display:inline-block; background:#f3f4f6; color:#6b7280; padding:3px 10px; border-radius:50px; font-weight:700; font-size:.8rem; border:1px solid #e5e7eb; }
+
+    /* Modal */
+    .auth-modal {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.65); backdrop-filter: blur(4px); z-index: 1000;
+      align-items: center; justify-content: center; padding: 16px;
+    }
+    .auth-modal.open { display: flex; }
+    .auth-modal-card {
+      background: #fff; border-radius: 20px; padding: 28px 24px;
+      width: 100%; max-width: 440px; box-shadow: 0 24px 60px rgba(0,0,0,.3);
+      position: relative; overflow: hidden;
+      border: 1px solid #E6DEC8;
+    }
+    .modal-close {
+      position: absolute; top: 16px; left: 16px;
+      background: none; border: none; font-size: 1.4rem; color: #9ca3af; cursor: pointer;
+      z-index: 10;
+    }
+
+    /* Google Account Chooser (Dark Theme) */
+    .g-chooser {
+      background: #18181b; color: #fff;
+      border-radius: 18px; padding: 24px 20px;
+      margin: -28px -24px;
+    }
+    .g-chooser-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #27272a;
+    }
+    .g-chooser-header h2 { font-size: 1.25rem; font-weight: 800; color: #fff; margin: 0; }
+    .g-account-list { display: flex; flex-direction: column; gap: 4px; max-height: 340px; overflow-y: auto; }
+    .g-account-item {
+      display: flex; align-items: center; gap: 14px;
+      padding: 10px 14px; border-radius: 12px; cursor: pointer;
+      transition: background .15s;
+    }
+    .g-account-item:hover { background: #27272a; }
+    .g-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 1rem; color: #fff; flex-shrink: 0;
+    }
+    .g-avatar-icon {
+      width: 38px; height: 38px; border-radius: 50%; background: #27272a;
+      display: flex; align-items: center; justify-content: center;
+      color: #9ca3af; font-size: 1rem; flex-shrink: 0;
+    }
+    .g-acc-info { flex: 1; text-align: right; }
+    .g-acc-name { font-weight: 700; font-size: .92rem; color: #f4f4f5; }
+    .g-acc-email { font-size: .8rem; color: #a1a1aa; direction: ltr; text-align: right; }
+
+    .student-footer { text-align: center; color: #9ca3af; font-size: .82rem; padding: 20px 0 0; }
+    #toasts { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; min-width: 280px; }
+    .toast { background: #1f2937; color: #fff; padding: 12px 20px; border-radius: 12px; font-size: .9rem; box-shadow: 0 4px 20px rgba(0,0,0,.3); }
+    .toast.success { border-right: 4px solid #10b981; }
+    .toast.error   { border-right: 4px solid #ef4444; }
+  </style>
+</head>
+<body style="font-family:'Cairo',sans-serif; margin:0; padding:0;">
+
+<!-- Hero Header & Auth Bar -->
+<div class="student-hero">
+  <div class="top-auth-nav">
+    <div style="font-size:.85rem; opacity:.9;">
+      <i class="fa-solid fa-building-columns"></i> جامعة البلقاء التطبيقية
+    </div>
+
+    <!-- Unauthenticated Controls -->
+    <div id="authGuestGroup" class="auth-btn-group">
+      <button class="btn-auth-google" onclick="openAuthModal('google')">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+        الدخول بـ Google
+      </button>
+      <button class="btn-auth-guest" onclick="openAuthModal('guest')">
+        <i class="fa-solid fa-user"></i> دخول ضيف
+      </button>
+    </div>
+
+    <!-- Authenticated Controls -->
+    <div id="userAuthGroup" class="auth-btn-group" style="display:none;">
+      <div class="user-pill" id="userPillTxt">
+        <i class="fa-solid fa-user-circle"></i>
+        <span>أحمد</span>
+      </div>
+      <button class="btn-my-subs" onclick="toggleMySubsCard()">
+        <i class="fa-solid fa-list-check"></i> اشتراكاتي
+      </button>
+      <button class="btn-logout" onclick="logoutUser()" title="تسجيل الخروج">
+        <i class="fa-solid fa-right-from-bracket"></i>
+      </button>
+    </div>
+  </div>
+
+  <div class="logo-big"><i class="fa-solid fa-graduation-cap"></i></div>
+  <h1>مكانك <span>لمراقبة جريدة المواد</span></h1>
+  <p>تابع فتح الشعب واكتمال التسجيل لحظة بلحظة</p>
+  <div class="live-pill">
+    <span class="dot"></span>
+    <span>المراقبة الحية تعمل الآن</span>
+  </div>
+</div>
+
+<div class="student-wrap">
+
+  <!-- Desktop Usage Notice Banner -->
+  <div class="desktop-notice-banner" id="desktopNoticeBanner">
+    <span><i class="fa-solid fa-laptop" style="color:#D97706; margin-left:6px"></i> <strong>ملاحظة:</strong> يُفضّل استخدام النظام عبر جهاز الحاسوب (الكمبيوتر) للحصول على أفضل تجربة تصفح وعرض متكامل للجدول.</span>
+    <button type="button" class="close-btn" onclick="document.getElementById('desktopNoticeBanner').style.display='none'" title="إغلاق التنبيه">✕</button>
+  </div>
+
+  <!-- بطاقة اشتراكاتي (تظهر عند الضغط أو التسجيل) -->
+  <div class="sub-card" id="mySubsCard" style="display:none; background:#ecfdf5; border-color:#a7f3d0;">
+    <h2><i class="fa-solid fa-list-check"></i> اشتراكاتي الحالية وإدارتها</h2>
+    <div id="mySubsContent">جاري تحميل بيانات اشتراكاتك...</div>
+  </div>
+
+  <!-- بطاقة الاشتراك الإشعاري -->
+  <div class="sub-card">
+    <h2><i class="fa-solid fa-bell"></i> اشترك لتصلك الإشعارات الفورية</h2>
+    <form id="subForm" onsubmit="submitSub(event)">
+      <div class="form-row">
+        <div class="fg">
+          <label>الاسم الكامل *</label>
+          <input name="name" id="subNameInp" type="text" placeholder="مثال: أحمد محمد" required>
+        </div>
+        <div class="fg">
+          <label>البريد الإلكتروني *</label>
+          <input name="email" id="subEmailInp" type="email" placeholder="مثال: student@example.com" required>
+        </div>
+      </div>
+      <div class="fg" style="margin-top:8px;">
+        <label>الكليات التي تهمك *</label>
+        <div class="multi-college-box">
+          <button type="button" class="college-select-btn" id="sCollegeBtn" onclick="toggleCollegeDropdown()">
+            <span id="sCollegeBtnText">اختر الكليات...</span>
+            <i class="fa-solid fa-chevron-down" style="font-size:.75rem; color:#6b7280;"></i>
+          </button>
+          <div class="college-dropdown" id="sCollegeDrop">
+            <label class="college-checkbox-item all-item">
+              <input type="checkbox" id="sChkAll" onchange="toggleAllColleges()">
+              <span>جميع الكليات</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="form-row" style="margin-top:8px;">
+        <div class="fg">
+          <label>اسم المادة (اختياري)</label>
+          <div class="ac-wrap">
+            <input name="course_query" id="sCourseQ" type="text" placeholder="اكتب اسم المادة أو رمزها..." autocomplete="off" oninput="onCourseInput(this)">
+            <div class="ac-drop hidden" id="sAcDrop"></div>
+          </div>
+          <small style="color:#6b7280; font-size:.78rem;">اتركها فارغة لتلقي إشعارات كافة مواد الكليات المحددة</small>
+        </div>
+        <div class="fg">
+          <label>رقم الشعبة (اختياري)</label>
+          <input name="section_query" type="text" placeholder="مثال: 1 أو 2">
+        </div>
+      </div>
+      <button type="submit" class="btn-subscribe">
+        <i class="fa-solid fa-paper-plane"></i>
+        تفعيل الإشعار الفوري
+      </button>
+    </form>
+  </div>
+
+  <!-- نموذج طلب إشعاري فور إتاحة مادة للتسجيل -->
+  <div class="sub-card">
+    <h2><i class="fa-solid fa-bell-concierge"></i> إشعاري فور إتاحة مادة للتسجيل</h2>
+    <p style="color:#6b7280; font-size:.88rem; margin: -10px 0 18px;">اكتب رمز واسم المادة لتصلك إشعارات فورية عبر الإيميل فور إتاحتها للتسجيل مع توضيح كامل للوقت والأيام.</p>
+
+    <div style="background:#fefce8; border:1px solid #fde68a; border-radius:10px; padding:12px 16px; margin-bottom:18px; font-size:.85rem; color:#92400e; display:flex; gap:10px; align-items:flex-start;">
+      <i class="fa-solid fa-triangle-exclamation" style="margin-top:2px; flex-shrink:0;"></i>
+      <span>يرجى كتابة <strong>رمز المادة الصحيح</strong> كما هو مقرر في الخطة الدراسية المعتمدة (مثال: <strong>CS201</strong> أو <strong>EE305</strong>).</span>
+    </div>
+
+    <form id="reqForm" onsubmit="submitCourseRequest(event)">
+      <div class="form-row">
+        <div class="fg">
+          <label>الاسم الكامل *</label>
+          <input name="name" id="reqNameInp" type="text" placeholder="مثال: أحمد محمد" required>
+        </div>
+        <div class="fg">
+          <label>البريد الإلكتروني *</label>
+          <input name="email" id="reqEmailInp" type="email" placeholder="مثال: student@example.com" required>
+        </div>
+      </div>
+      <div class="form-row" style="margin-top:8px;">
+        <div class="fg">
+          <label>رمز المادة (Course Code) *</label>
+          <input name="course_no" type="text" placeholder="مثال: CS201 أو EE305" required style="text-transform:uppercase; font-weight:700; letter-spacing:1px;">
+          <small style="color:#6b7280;font-size:.78rem;">اكتبه كما هو في خطتك الدراسية المعتمدة</small>
+        </div>
+        <div class="fg">
+          <label>اسم المادة</label>
+          <input name="course_name" type="text" placeholder="مثال: هيكلة البيانات">
+        </div>
+      </div>
+      <div class="fg" style="margin-top:8px;">
+        <label>ملاحظات إضافية (اختياري)</label>
+        <textarea name="notes" rows="3" placeholder="مثال: أفضّل الشعب الصباحية — أي معلومات إضافية..." style="padding:11px 14px; border:1.5px solid #d1fae5; border-radius:10px; background:#f0fdf4; font-family:'Cairo',sans-serif; font-size:.95rem; color:#111; outline:none; resize:vertical; width:100%; box-sizing:border-box;"></textarea>
+      </div>
+      <button type="submit" class="btn-subscribe" style="background:linear-gradient(135deg,#0369a1,#0ea5e9);">
+        <i class="fa-solid fa-paper-plane"></i>
+        إرسال الطلب
+      </button>
+    </form>
+  </div>
+
+  <!-- جدول الجريدة -->
+  <div class="courses-card">
+    <h2><i class="fa-solid fa-book-open"></i> جريدة المواد الحالية</h2>
+    <div class="toolbar-s">
+      <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input id="sSearch" type="text" placeholder="اسم المادة، رمزها، القسم، طبيعة المادة، أو اسم المدرس..." oninput="loadCourses()">
+      </div>
+      <select id="sCollege" onchange="loadDepartments(); loadCourses();"><option value="">كل الكليات</option></select>
+      <select id="sDept" onchange="loadCourses()"><option value="">كل الأقسام الأكاديمية</option></select>
+      <select id="sStatus" onchange="loadCourses()">
+        <option value="1">متاحة</option>
+        <option value="">كل الحالات</option>
+        <option value="3">مغلقة</option>
+        <option value="2">ملغاة</option>
+        <option value="NEW">مواد وشعب جديدة</option>
+      </select>
+      <button class="btn-filter" onclick="loadCourses()"><i class="fa-solid fa-filter"></i> تصفية</button>
+    </div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>المادة والرمز</th>
+            <th>ش</th>
+            <th>الحالة</th>
+            <th>طبيعة المادة</th>
+            <th>الأوقات</th>
+            <th>المدرس</th>
+            <th>القاعة</th>
+            <th>الكلية والقسم</th>
+          </tr>
+        </thead>
+        <tbody id="coursesTb"><tr><td colspan="8" class="empty">جاري التحميل...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="student-footer">
+    مكانك لمراقبة جريدة المواد — جامعة البلقاء التطبيقية &copy; 2026
+  </div>
+</div>
+
+<!-- Modal Auth (Google Account Chooser & Guest) -->
+<div class="auth-modal" id="authModal">
+  <div class="auth-modal-card" id="authModalCard">
+    <button class="modal-close" onclick="closeAuthModal()">&times;</button>
+
+    <!-- Google Account View -->
+    <div id="modalGoogleView" style="padding:8px;">
+      <h3 style="margin:0 0 12px; color:#064e3b; display:flex; align-items:center; gap:8px;">
+        <svg viewBox="0 0 24 24" width="22" height="22">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+        </svg>
+        الدخول بحساب Google
+      </h3>
+      <p style="font-size:.88rem; color:#6b7280; margin-bottom:16px;">أدخل بريد Google الخاص بك كطالب لتلقي الإشعارات وإدارة اشتراكاتك فوراً:</p>
+      <div class="fg">
+        <label>اسم الطالب *</label>
+        <input id="gStudentName" type="text" placeholder="مثال: أحمد محمد">
+      </div>
+      <div class="fg" style="margin-top:8px;">
+        <label>إيميل Google *</label>
+        <input id="gStudentEmail" type="email" placeholder="student@gmail.com">
+      </div>
+      <button class="btn-subscribe" style="margin-top:16px; background:#2563eb;" onclick="submitStudentGoogleLogin()">
+        <i class="fa-brands fa-google"></i>
+        متابعة بحساب Google
+      </button>
+    </div>
+
+    <!-- Guest View -->
+    <div id="modalGuestView" style="display:none; padding:10px;">
+      <h3 style="margin:0 0 16px; color:#064e3b;"><i class="fa-solid fa-user"></i> دخول ضيف</h3>
+      <p style="font-size:.88rem; color:#6b7280; margin-bottom:16px;">الدخول كضيف يتيح لك الاشتراك والتصفح بحرية دون الحاجة لحساب دائم:</p>
+      <div class="fg">
+        <label>الاسم الفضيلي (اختياري)</label>
+        <input id="mGuestName" type="text" placeholder="زائر">
+      </div>
+      <div class="fg" style="margin-top:8px;">
+        <label>البريد الإلكتروني (لتلقي الإشعارات)</label>
+        <input id="mGuestEmail" type="email" placeholder="student@example.com">
+      </div>
+      <button class="btn-subscribe" style="margin-top:16px; background:#4b5563;" onclick="doGuestLogin()">
+        <i class="fa-solid fa-user"></i>
+        متابعة كضيف
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+let currentUser = null;
+
+// ─────────────── AUTH ───────────────
+async function checkAuth() {
+  const res = await fetch('/api/auth/me');
+  const data = await res.json();
+  if (data.authenticated && data.user) {
+    currentUser = data.user;
+    renderUserUI();
+  }
+}
+
+function openAuthModal(mode) {
+  document.getElementById('authModal').classList.add('open');
+  if (mode === 'google') {
+    document.getElementById('modalGoogleView').style.display = 'block';
+    document.getElementById('modalGuestView').style.display = 'none';
+  } else {
+    document.getElementById('modalGoogleView').style.display = 'none';
+    document.getElementById('modalGuestView').style.display = 'block';
+  }
+}
+
+function closeAuthModal() {
+  document.getElementById('authModal').classList.remove('open');
+}
+
+async function submitStudentGoogleLogin() {
+  const name  = document.getElementById('gStudentName').value.trim();
+  const email = document.getElementById('gStudentEmail').value.trim();
+  if (!email) { showToast('يرجى كتابة البريد الإلكتروني.', 'error'); return; }
+  const res  = await fetch('/api/auth/google', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: name || email.split('@')[0], email }) });
+  const data = await res.json();
+  if (data.success) {
+    currentUser = data.user;
+    closeAuthModal();
+    renderUserUI();
+    showToast(`أهلاً بك ${currentUser.name}!`, 'success');
+  }
+}
+
+async function doGuestLogin() {
+  const name  = document.getElementById('mGuestName').value.trim();
+  const email = document.getElementById('mGuestEmail').value.trim();
+  const res  = await fetch('/api/auth/guest', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, email }) });
+  const data = await res.json();
+  if (data.success) {
+    currentUser = data.user;
+    closeAuthModal();
+    renderUserUI();
+    showToast('تم الدخول كضيف بنجاح', 'success');
+  }
+}
+
+async function logoutUser() {
+  await fetch('/api/auth/logout', { method:'POST' });
+  currentUser = null;
+  document.getElementById('authGuestGroup').style.display = 'flex';
+  document.getElementById('userAuthGroup').style.display = 'none';
+  document.getElementById('mySubsCard').style.display = 'none';
+  showToast('تم تسجيل الخروج.', 'success');
+}
+
+function renderUserUI() {
+  if (!currentUser) return;
+  document.getElementById('authGuestGroup').style.display = 'none';
+  document.getElementById('userAuthGroup').style.display = 'flex';
+  document.getElementById('userPillTxt').innerHTML = `<i class="fa-solid fa-user-circle"></i> <span>${currentUser.name} (${currentUser.provider==='google'?'Google':'ضيف'})</span>`;
+
+  // Auto-fill forms
+  if (currentUser.name) {
+    document.getElementById('subNameInp').value = currentUser.name;
+    document.getElementById('reqNameInp').value = currentUser.name;
+  }
+  if (currentUser.email) {
+    document.getElementById('subEmailInp').value = currentUser.email;
+    document.getElementById('reqEmailInp').value = currentUser.email;
+  }
+
+  loadMySubscriptions();
+}
+
+// ─────────────── MY SUBSCRIPTIONS ───────────────
+function toggleMySubsCard() {
+  const card = document.getElementById('mySubsCard');
+  if (card.style.display === 'none') {
+    card.style.display = 'block';
+    loadMySubscriptions();
+    card.scrollIntoView({ behavior: 'smooth' });
+  } else {
+    card.style.display = 'none';
+  }
+}
+
+async function loadMySubscriptions() {
+  if (!currentUser || !currentUser.email) return;
+  const res = await fetch(`/api/my-subscriptions?email=${encodeURIComponent(currentUser.email)}`);
+  const data = await res.json();
+  const box = document.getElementById('mySubsContent');
+
+  if (!data.subscribers.length && !data.requests.length) {
+    box.innerHTML = '<p style="color:#6b7280; font-size:.9rem; text-align:center; margin:10px 0;">لا توجد لديك أي اشتراكات حالية.</p>';
+    return;
+  }
+
+  let html = '';
+  if (data.subscribers.length) {
+    html += '<h4 style="margin:0 0 10px; color:#064e3b;">اشتراكات الإشعارات:</h4>';
+    html += data.subscribers.map(s => `
+      <div class="my-sub-item">
+        <div class="my-sub-info">
+          <strong>${s.course_query !== 'جميع المواد' ? s.course_query : 'كليات: ' + (s.college_query || 'جميع الكليات')}</strong>
+          <small>الشعبة: ${s.section_query || 'الكل'} | البريد: ${s.email}</small>
+        </div>
+        <div class="my-sub-actions">
+          <button class="btn-action-toggle ${s.active?'active':'paused'}" onclick="toggleMySub(${s.id})">
+            ${s.active?'🟢 نشط (إيقاف)':'🟡 موقوف (تفعيل)'}
+          </button>
+          <button class="btn-action-delete" onclick="deleteMySub(${s.id})">
+            <i class="fa-solid fa-trash"></i> إلغاء الاشتراك وحذفه
+          </button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  if (data.requests.length) {
+    html += '<h4 style="margin:16px 0 10px; color:#064e3b;">طلبات المواد المطلوبة:</h4>';
+    html += data.requests.map(r => `
+      <div class="my-sub-item">
+        <div class="my-sub-info">
+          <strong>رمز المادة: ${r.course_no} (${r.course_name || 'بدون اسم'})</strong>
+          <small>تاريخ الطلب: ${r.created_at.split('T')[0]}</small>
+        </div>
+        <span class="badge-open">قيد المراقبة</span>
+      </div>
+    `).join('');
+  }
+
+  box.innerHTML = html;
+}
+
+async function toggleMySub(sid) {
+  const res = await fetch(`/api/my-subscriptions/toggle/${sid}`, { method:'POST' });
+  const data = await res.json();
+  if (data.success) {
+    showToast('تم تغيير حالة الاشتراك بنجاح', 'success');
+    loadMySubscriptions();
+  }
+}
+
+async function deleteMySub(sid) {
+  if (!confirm('هل أنت تأكد من إلغاء الاشتراك وحذفه نهائياً؟')) return;
+  const res = await fetch(`/api/my-subscriptions/${sid}`, { method:'DELETE' });
+  const data = await res.json();
+  if (data.success) {
+    showToast('تم إلغاء الاشتراك وحذفه بنجاح', 'success');
+    loadMySubscriptions();
+  }
+}
+
+// ─────────────── COLLEGES ───────────────
+async function loadColleges() {
+  const res = await fetch('/api/colleges');
+  const data = await res.json();
+  const drop = document.getElementById('sCollegeDrop');
+  const sel  = document.getElementById('sCollege');
+  data.colleges.forEach(c => {
+    const lbl = document.createElement('label');
+    lbl.className = 'college-checkbox-item';
+    lbl.innerHTML = `<input type="checkbox" value="${c}" onchange="onCollegeCheckboxChange()"><span>${c}</span>`;
+    drop.appendChild(lbl);
+    const opt = document.createElement('option');
+    opt.value = c; opt.textContent = c;
+    sel.appendChild(opt);
+  });
+}
+
+function toggleCollegeDropdown() {
+  document.getElementById('sCollegeDrop').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  const box = document.querySelector('.multi-college-box');
+  if (box && !box.contains(e.target)) document.getElementById('sCollegeDrop').classList.remove('open');
+});
+
+function toggleAllColleges() {
+  const all = document.getElementById('sChkAll').checked;
+  document.querySelectorAll('#sCollegeDrop input[type=checkbox]:not(#sChkAll)').forEach(c => c.checked = all);
+  onCollegeCheckboxChange();
+}
+function onCollegeCheckboxChange() {
+  const checks = [...document.querySelectorAll('#sCollegeDrop input[type=checkbox]:not(#sChkAll):checked')];
+  const names  = checks.map(c => c.value);
+  const btn    = document.getElementById('sCollegeBtnText');
+  if (!names.length)        btn.textContent = 'اختر الكليات...';
+  else if (names.length===1) btn.textContent = names[0];
+  else                       btn.textContent = `${names.length} كليات مختارة`;
+}
+function getSelectedColleges() {
+  return [...document.querySelectorAll('#sCollegeDrop input[type=checkbox]:not(#sChkAll):checked')].map(c => c.value);
+}
+
+// ─────────────── AUTOCOMPLETE ───────────────
+let acTimer;
+function onCourseInput(inp) {
+  clearTimeout(acTimer);
+  acTimer = setTimeout(async () => {
+    const q = inp.value.trim();
+    const drop = document.getElementById('sAcDrop');
+    if (!q) { drop.classList.add('hidden'); return; }
+    const res  = await fetch(`/api/live-search?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    if (!data.results.length) { drop.classList.add('hidden'); return; }
+    drop.innerHTML = data.results.map(r =>
+      `<div class="ac-item" onclick="document.getElementById('sCourseQ').value='${r.course_name}';document.getElementById('sAcDrop').classList.add('hidden')">${r.course_name} <small style="color:#6b7280">(${r.course_no})</small></div>`
+    ).join('');
+    drop.classList.remove('hidden');
+  }, 200);
+}
+
+// ─────────────── SUBSCRIBE ───────────────
+async function submitSub(e) {
+  e.preventDefault();
+  const fd   = new FormData(e.target);
+  const cols = getSelectedColleges();
+  const body = {
+    name: fd.get('name'),
+    email: fd.get('email'),
+    college_query: cols.length ? cols : 'ALL',
+    course_query: fd.get('course_query'),
+    section_query: fd.get('section_query'),
+  };
+  const res  = await fetch('/api/subscribe', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const data = await res.json();
+  showToast(data.message, data.success ? 'success' : 'error');
+  if (data.success) {
+    e.target.reset();
+    if (currentUser) loadMySubscriptions();
+  }
+}
+
+// ─────────────── COURSE REQUEST ───────────────
+async function submitCourseRequest(e) {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const body = {
+    name:        fd.get('name'),
+    email:       fd.get('email'),
+    course_no:   fd.get('course_no').trim().toUpperCase(),
+    course_name: fd.get('course_name'),
+    notes:       fd.get('notes'),
+  };
+  const res  = await fetch('/api/course-request', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const data = await res.json();
+  showToast(data.message, data.success ? 'success' : 'error');
+  if (data.success) {
+    e.target.reset();
+    if (currentUser) loadMySubscriptions();
+  }
+}
+
+async function loadDepartments() {
+  const deptSel = document.getElementById('sDept');
+  if (!deptSel) return;
+  const col = document.getElementById('sCollege')?.value || '';
+  const res  = await fetch(`/api/departments?college=${encodeURIComponent(col)}`);
+  const data = await res.json();
+  deptSel.innerHTML = '<option value="">كل الأقسام الأكاديمية</option>' +
+    data.departments.map(d => `<option value="${d}">${d}</option>`).join('');
+}
+
+function formatTime12h(timeStr) {
+  if (!timeStr || timeStr === '—') return '—';
+  const dayMap = {'ح':'الأحد', 'ن':'الإثنين', 'ث':'الثلاثاء', 'ر':'الأربعاء', 'خ':'الخميس', 'س':'السبت'};
+  const convertHhmm = (hhmm) => {
+    const parts = hhmm.split(':');
+    if (parts.length < 2) return hhmm;
+    let h = parseInt(parts[0], 10);
+    const m = parts[1];
+    const period = h < 12 ? 'ص' : 'م';
+    h = h > 12 ? h - 12 : (h === 0 ? 12 : h);
+    return `${h}:${m} ${period}`;
+  };
+
+  const re = /((?:[حنثرخس]\s*)+)(\d{2}:\d{2})\s+(\d{2}:\d{2})/g;
+  let match;
+  const parts = [];
+  while ((match = re.exec(timeStr)) !== null) {
+    const daysRaw = match[1].trim().split(/\s+/);
+    const daysList = daysRaw.map(d => dayMap[d] || d);
+    const daysFmt = daysList.join(' - ');
+    parts.push(`<div style="white-space:nowrap;margin:2px 0;font-size:.84rem;"><strong>${daysFmt}:</strong> <span style="color:#047857;font-weight:700;">${convertHhmm(match[2])} - ${convertHhmm(match[3])}</span></div>`);
+  }
+  return parts.length ? parts.join('') : timeStr;
+}
+
+// ─────────────── COURSES TABLE ───────────────
+async function loadCourses() {
+  const q    = encodeURIComponent(document.getElementById('sSearch').value);
+  const col  = encodeURIComponent(document.getElementById('sCollege').value);
+  const dept = encodeURIComponent(document.getElementById('sDept')?.value || '');
+  const st   = encodeURIComponent(document.getElementById('sStatus').value);
+  const res  = await fetch(`/api/courses?query=${q}&college=${col}&dept=${dept}&status=${st}&limit=300`);
+  const data = await res.json();
+  const tb   = document.getElementById('coursesTb');
+  if (!data.courses.length) {
+    tb.innerHTML = '<tr><td colspan="8" class="empty">لا توجد نتائج للتصفية المحددة</td></tr>';
+    return;
+  }
+  const statusBadge = s => {
+    if (s==='1') return '<span class="badge-open">متاحة</span>';
+    if (s==='3') return '<span class="badge-closed">مغلقة</span>';
+    return '<span class="badge-cancelled">ملغاة</span>';
+  };
+  const formatRemarks = r => {
+    if (!r) return '<span style="color:#9ca3af">—</span>';
+    if (r.includes('وجاهي')) return '<span style="display:inline-block;background:#dcfce7;color:#15803d;padding:3px 10px;border-radius:50px;font-weight:700;font-size:.8rem;border:1px solid #86efac;">وجاهي</span>';
+    if (r.includes('مدمج'))  return '<span style="display:inline-block;background:#e0e7ff;color:#3730a3;padding:3px 10px;border-radius:50px;font-weight:700;font-size:.8rem;border:1px solid #a5b4fc;">مدمج</span>';
+    if (r.includes('إلكتروني') || r.toLowerCase().includes('online')) return '<span style="display:inline-block;background:#f3e8ff;color:#6b21a8;padding:3px 10px;border-radius:50px;font-weight:700;font-size:.8rem;border:1px solid #d8b4fe;">إلكتروني</span>';
+    return `<span style="display:inline-block;background:#f3f4f6;color:#374151;padding:3px 10px;border-radius:50px;font-weight:700;font-size:.8rem;">${r}</span>`;
+  };
+
+  tb.innerHTML = data.courses.map(c => `
+    <tr>
+      <td><strong>${c.course_name}</strong><br><small style="color:#6b7280">${c.course_no}</small></td>
+      <td style="text-align:center;font-weight:700;">${c.section_no}</td>
+      <td>${statusBadge(c.status)}</td>
+      <td>${formatRemarks(c.remarks)}</td>
+      <td>${formatTime12h(c.times)}</td>
+      <td style="font-size:.82rem;">${c.lecturers||'—'}</td>
+      <td style="font-size:.82rem;">${c.rooms||'—'}</td>
+      <td><strong style="color:#111;">${c.college_name||'—'}</strong><br><small style="color:#059669;font-weight:700;"><i class="fa-solid fa-layer-group"></i> ${c.department_name||'عام'}</small></td>
+    </tr>`).join('');
+}
+
+// ─────────────── TOAST ───────────────
+function showToast(msg, type='success') {
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  document.getElementById('toasts').appendChild(t);
+  setTimeout(() => t.remove(), 5000);
+}
+
+// ─────────────── INIT ───────────────
+checkAuth();
+loadColleges();
+loadDepartments();
+loadCourses();
+</script>
+</body>
+</html>

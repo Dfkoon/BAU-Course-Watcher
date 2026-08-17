@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>إلغاء الاشتراك — مكانك لمراقبة جريدة المواد</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Cairo', sans-serif;
+      background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%);
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0; padding: 20px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 24px;
+      padding: 48px 36px;
+      width: 100%; max-width: 460px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+      text-align: center;
+    }
+    .icon-box {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px; font-size: 2.2rem;
+    }
+    .icon-box.success { background: #d1fae5; color: #059669; }
+    .icon-box.error   { background: #fee2e2; color: #dc2626; }
+    h1 { font-size: 1.35rem; font-weight: 900; color: #064e3b; margin: 0 0 10px; }
+    p { font-size: .95rem; color: #4b5563; line-height: 1.6; margin: 0 0 28px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 24px;
+      background: linear-gradient(135deg, #059669, #10b981);
+      color: #fff; border-radius: 12px;
+      text-decoration: none; font-weight: 800; font-size: .95rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    {% if success %}
+      <div class="icon-box success"><i class="fa-solid fa-circle-check"></i></div>
+      <h1>تم إلغاء الاشتراك بنجاح</h1>
+      <p>{{ message }}</p>
+    {% else %}
+      <div class="icon-box error"><i class="fa-solid fa-circle-xmark"></i></div>
+      <h1>تعذّر إلغاء الاشتراك</h1>
+      <p>{{ message }}</p>
+    {% endif %}
+
+    <a href="/student" class="btn">
+      <i class="fa-solid fa-house"></i>
+      العودة للرئيسية
+    </a>
+  </div>
+</body>
+</html>
