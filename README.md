@@ -1,3 +1,5 @@
+<div dir="rtl">
+
 # 🎓 نظام مراقبة جريدة المواد — جامعة البلقاء التطبيقية (BAU Course Watcher)
 
 [![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
@@ -67,7 +69,7 @@ python3 app.py
 
 ## 📁 هيكلية المشروع
 
-```
+```text
 BAU-Course-Watcher/
 ├── app.py                 # المحرك الرئيسي لنظام المراقبة والسيرفر (Flask Engine)
 ├── requirements.txt       # المكتبات والاعتمادات المطلوبة
@@ -98,3 +100,5 @@ BAU-Course-Watcher/
 
 ## 📜 الترخيص
 المشروع مرخص تحت رخصة **MIT License**.
+
+</div>
