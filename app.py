@@ -893,17 +893,23 @@ def admin_login():
     totp_enabled  = _get_admin_field("totp_enabled", "0") == "1"
     totp_secret   = _get_admin_field("totp_secret", "")
 
-    # Step 1: verify username + password
-    if not stored_hash:
-        return jsonify(success=False, message="لم يتم إعداد حساب الأدمن بعد."), 500
+    env_user = os.environ.get("ADMIN_USERNAME", "").strip()
+    env_pass = os.environ.get("ADMIN_PASSWORD", "").strip()
 
-    if username != stored_user:
+    # Match either DB stored credentials OR environment variables set on Render
+    user_match = (username == stored_user) or (env_user and username == env_user)
+    if not user_match:
         return jsonify(success=False, message="اسم المستخدم أو كلمة المرور غير صحيحة"), 401
 
-    try:
-        pw_ok = bcrypt.checkpw(password.encode(), stored_hash.encode())
-    except Exception:
-        pw_ok = False
+    pw_ok = False
+    if stored_hash:
+        try:
+            pw_ok = bcrypt.checkpw(password.encode(), stored_hash.encode())
+        except Exception:
+            pw_ok = False
+
+    if not pw_ok and env_pass and password == env_pass:
+        pw_ok = True
 
     if not pw_ok:
         return jsonify(success=False, message="اسم المستخدم أو كلمة المرور غير صحيحة"), 401

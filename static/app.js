@@ -301,13 +301,28 @@ async function loadColleges() {
   updateCollegeButtonText();
 }
 
+async function onCollegeFilterChange() {
+  const deptSel = document.getElementById("cDept");
+  if (deptSel) {
+    deptSel.innerHTML = '<option value="">كل الأقسام الأكاديمية</option>';
+    deptSel.value = "";
+  }
+  await loadDepartments();
+  loadCourses();
+}
+
 async function loadDepartments() {
   const deptSel = document.getElementById("cDept");
   if (!deptSel) return;
   const col = document.getElementById("cCollege")?.value || "";
-  const { departments = [] } = await fetch(`/api/departments?college=${encodeURIComponent(col)}`).then(r => r.json());
-  deptSel.innerHTML = '<option value="">كل الأقسام الأكاديمية</option>' +
-    departments.map(d => `<option value="${d}">${d}</option>`).join("");
+  try {
+    const { departments = [] } = await fetch(`/api/departments?college=${encodeURIComponent(col)}`).then(r => r.json());
+    deptSel.innerHTML = '<option value="">كل الأقسام الأكاديمية</option>' +
+      departments.map(d => `<option value="${d}">${d}</option>`).join("");
+  } catch (e) {
+    deptSel.innerHTML = '<option value="">كل الأقسام الأكاديمية</option>';
+  }
+  deptSel.value = "";
 }
 
 function formatTime12h(timeStr) {

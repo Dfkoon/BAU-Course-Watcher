@@ -175,7 +175,7 @@
               <i class="fa-solid fa-magnifying-glass"></i>
               <input id="cSearch" type="text" placeholder="اسم المادة، رمزها، أو اسم المدرس...">
             </div>
-            <select id="cCollege" onchange="loadDepartments(); loadCourses();"><option value="">كل الكليات</option></select>
+            <select id="cCollege" onchange="onCollegeFilterChange()"><option value="">كل الكليات</option></select>
             <select id="cDept" onchange="loadCourses()"><option value="">كل الأقسام الأكاديمية</option></select>
             <select id="cStatus" onchange="loadCourses()">
               <option value="">كل الحالات</option>

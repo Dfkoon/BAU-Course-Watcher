@@ -512,7 +512,7 @@
         <i class="fa-solid fa-magnifying-glass"></i>
         <input id="sSearch" type="text" placeholder="اسم المادة، رمزها، القسم، طبيعة المادة، أو اسم المدرس..." oninput="loadCourses()">
       </div>
-      <select id="sCollege" onchange="loadDepartments(); loadCourses();"><option value="">كل الكليات</option></select>
+      <select id="sCollege" onchange="onCollegeFilterChange()"><option value="">كل الكليات</option></select>
       <select id="sDept" onchange="loadCourses()"><option value="">كل الأقسام الأكاديمية</option></select>
       <select id="sStatus" onchange="loadCourses()">
         <option value="1">متاحة</option>
@@ -875,14 +875,31 @@ async function submitCourseRequest(e) {
   }
 }
 
+async function onCollegeFilterChange() {
+  const deptSel = document.getElementById('sDept');
+  if (deptSel) {
+    deptSel.innerHTML = '<option value="">كل الأقسام الأكاديمية</option>';
+    deptSel.value = '';
+  }
+  await loadDepartments();
+  loadCourses();
+}
+
 async function loadDepartments() {
   const deptSel = document.getElementById('sDept');
   if (!deptSel) return;
   const col = document.getElementById('sCollege')?.value || '';
-  const res  = await fetch(`/api/departments?college=${encodeURIComponent(col)}`);
-  const data = await res.json();
-  deptSel.innerHTML = '<option value="">كل الأقسام الأكاديمية</option>' +
-    data.departments.map(d => `<option value="${d}">${d}</option>`).join('');
+
+  try {
+    const res = await fetch(`/api/departments?college=${encodeURIComponent(col)}`);
+    const data = await res.json();
+    const depts = data.departments || [];
+    deptSel.innerHTML = '<option value="">كل الأقسام الأكاديمية</option>' +
+      depts.map(d => `<option value="${d}">${d}</option>`).join('');
+  } catch (err) {
+    deptSel.innerHTML = '<option value="">كل الأقسام الأكاديمية</option>';
+  }
+  deptSel.value = '';
 }
 
 function formatTime12h(timeStr) {
