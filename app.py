@@ -1430,12 +1430,20 @@ def api_course_requests():
 
 def start():
     init_db()
+    # Check if thread already started to prevent duplicates
+    for tr in threading.enumerate():
+        if tr.name == "BauWatcher" and tr.is_alive():
+            log.info("خيط المراقبة المستمرة يعمل بالفعل.")
+            return
     t = threading.Thread(target=watcher_loop, daemon=True, name="BauWatcher")
     t.start()
-    log.info("خيط المراقبة المستمرة بدأ.")
+    log.info("خيط المراقبة المستمرة بدأ بنجاح.")
+
+# Start DB init and background watcher loop on WSGI/Gunicorn load
+start()
 
 if __name__ == "__main__":
-    start()
     port = int(os.environ.get("PORT", 5050))
     log.info(f"الواجهة على: http://127.0.0.1:{port}")
     app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
+
