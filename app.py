@@ -617,23 +617,11 @@ def is_smtp_ready():
     host, port, user, pwd, sender = get_smtp_config()
     return bool(user and pwd and "your_email" not in user and "xxxx" not in pwd)
 
-def resolve_ipv4(host):
-    """تحويل اسم النطاق إلى IPv4 لتجنب مشكلة IPv6 Network is unreachable على Render."""
-    try:
-        addrs = socket.getaddrinfo(host, None, socket.AF_INET, socket.SOCK_STREAM)
-        if addrs:
-            ip = addrs[0][4][0]
-            log.info(f"Resolved {host} to IPv4: {ip}")
-            return ip
-    except Exception as e:
-        log.warning(f"resolve_ipv4 failed for {host}: {e}")
-    return host
-
 def send_smtp_email(to_email, subject, html_content, plain_content=""):
     """
     المحرك المركزي لإرسال البريد عبر Gmail SMTP:
-    1) يجبر استخدام IPv4 لمنع خطأ Network is unreachable في سحابة Render.
-    2) تجريد المسافات تلقائياً من كلمة مرور التطبيق.
+    1) تجريد المسافات تلقائياً من كلمة مرور التطبيق.
+    2) دقة استهداف IPv4 لمنع مشاكل IPv6 Network is unreachable في سحابة Render.
     3) تجربة المنفذ 465 (SSL) والمنفذ 587 (STARTTLS).
     """
     if not is_smtp_ready():
@@ -643,12 +631,13 @@ def send_smtp_email(to_email, subject, html_content, plain_content=""):
 
     host, port, user, pwd, sender = get_smtp_config()
 
-    # Monkeypatch socket.getaddrinfo to strictly force AF_INET (IPv4) on Render
-    old_getaddrinfo = socket.getaddrinfo
-    def getaddrinfo_ipv4(h, p, family=0, type=0, proto=0, flags=0):
-        return old_getaddrinfo(h, p, socket.AF_INET, type, proto, flags)
-
-    socket.getaddrinfo = getaddrinfo_ipv4
+    # Resolve host to IPv4 target address to bypass Render IPv6 routing issues
+    try:
+        ipv4_addrs = [res[4][0] for res in socket.getaddrinfo(host, port or 587, socket.AF_INET, socket.SOCK_STREAM)]
+        target_host = ipv4_addrs[0] if ipv4_addrs else host
+    except Exception as ex:
+        log.warning(f"Could not resolve IPv4 for {host}: {ex}")
+        target_host = host
 
     try:
         msg = MIMEMultipart("alternative")
@@ -666,20 +655,20 @@ def send_smtp_email(to_email, subject, html_content, plain_content=""):
 
         # 1) Attempt SSL Port 465
         try:
-            with smtplib.SMTP_SSL(host if "gmail" in host else "smtp.gmail.com", 465, context=ctx, timeout=12) as s:
+            with smtplib.SMTP_SSL(target_host, 465, context=ctx, timeout=12) as s:
                 s.login(user, pwd)
                 s.sendmail(user, [to_email], msg.as_string())
-            log.info(f"✅ أُرسل البريد الإلكتروني إلى {to_email} بنجاح عبر منفذ 465 (SSL IPv4).")
+            log.info(f"✅ أُرسل البريد الإلكتروني إلى {to_email} بنجاح عبر منفذ 465 (SSL).")
             return True, "تم إرسال البريد الإلكتروني بنجاح (SSL 465)"
         except Exception as e1:
             log.warning(f"محاولة منفذ 465 فشلت لـ {to_email}: {e1} — جاري استخدام منفذ 587 (TLS)...")
             # 2) Fallback to STARTTLS Port 587
             try:
-                with smtplib.SMTP(host if "gmail" in host else "smtp.gmail.com", port if port else 587, timeout=12) as s:
+                with smtplib.SMTP(target_host, port if port else 587, timeout=12) as s:
                     s.starttls(context=ctx)
                     s.login(user, pwd)
                     s.sendmail(user, [to_email], msg.as_string())
-                log.info(f"✅ أُرسل البريد الإلكتروني إلى {to_email} بنجاح عبر منفذ 587 (TLS IPv4).")
+                log.info(f"✅ أُرسل البريد الإلكتروني إلى {to_email} بنجاح عبر منفذ 587 (TLS).")
                 return True, "تم إرسال البريد الإلكتروني بنجاح (TLS 587)"
             except Exception as e2:
                 err_msg = f"فشل الإرسال على المنفذين (465: {e1} | 587: {e2})"
@@ -689,8 +678,6 @@ def send_smtp_email(to_email, subject, html_content, plain_content=""):
         err_msg = f"خطأ عام أثناء تجهيز الرسالة: {e}"
         log.error(err_msg)
         return False, err_msg
-    finally:
-        socket.getaddrinfo = old_getaddrinfo
 
 def notify_subscribers_batch(changes):
     conn = get_db()
