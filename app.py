@@ -767,6 +767,60 @@ def _send_email(student_name, to_email, ch, sub_id=None):
             log.error(err_msg)
             return False, err_msg
 
+def send_email_single(to_email, subject, plain_body):
+    """إرسال إيميل نصي بسيط (تأكيد اشتراك، ترحيب، إلخ)"""
+    if not is_smtp_ready():
+        log.warning(f"send_email_single: SMTP غير مُعدّ — تعذّر الإرسال إلى {to_email}")
+        return False
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = f"{SENDER_NAME} <{SMTP_USER}>"
+        msg["To"] = to_email
+        # HTML version with RTL styling
+        html_body = f"""<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head><meta charset="UTF-8">
+<style>
+  body {{ font-family: 'Segoe UI', Tahoma, sans-serif; background:#f3f4f6; margin:0; padding:20px; direction:rtl; }}
+  .card {{ max-width:560px; margin:0 auto; background:#fff; border-radius:16px; border:1px solid #e5e7eb; overflow:hidden; }}
+  .hdr {{ background:linear-gradient(135deg,#059669,#10b981); color:#fff; padding:24px; text-align:center; }}
+  .body {{ padding:28px; line-height:1.7; color:#374151; white-space:pre-line; }}
+  .footer {{ text-align:center; padding:16px; font-size:.8rem; color:#9ca3af; border-top:1px dashed #e5e7eb; }}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="hdr"><h2 style="margin:0;">🎓 مكانك الجامعي — جامعة البلقاء</h2></div>
+  <div class="body">{plain_body}</div>
+  <div class="footer">هذا البريد أُرسل تلقائياً من نظام مكانك لمراقبة الجريدة</div>
+</div>
+</body>
+</html>"""
+        msg.attach(MIMEText(plain_body, "plain", "utf-8"))
+        msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+        # Try SSL 465 first
+        try:
+            ctx = ssl._create_unverified_context()
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ctx, timeout=10) as s:
+                s.login(SMTP_USER, SMTP_PASS)
+                s.sendmail(SMTP_USER, [to_email], msg.as_string())
+            log.info(f"send_email_single: أُرسل إلى {to_email} عبر منفذ 465.")
+            return True
+        except Exception as e1:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as s:
+                s.starttls()
+                s.login(SMTP_USER, SMTP_PASS)
+                s.sendmail(SMTP_USER, [to_email], msg.as_string())
+            log.info(f"send_email_single: أُرسل إلى {to_email} عبر منفذ 587.")
+            return True
+    except Exception as e:
+        log.error(f"send_email_single: فشل الإرسال إلى {to_email}: {e}")
+        return False
+
+
+
 # =========================================================================
 # Stats Helper & Web Endpoints
 # =========================================================================
