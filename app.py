@@ -597,10 +597,76 @@ def watcher_loop():
 # Email Notifications Engine
 # =========================================================================
 
+# =========================================================================
+# Email Notifications Engine
+# =========================================================================
+
+def get_smtp_config():
+    """تسترجع إعدادات البريد الإلكتروني ديناميكياً وتزيل المسافات من كلمة المرور تلقائياً."""
+    user = os.environ.get("SMTP_USER", "").strip()
+    pwd = os.environ.get("SMTP_PASS", "").replace(" ", "").strip()
+    host = os.environ.get("SMTP_HOST", "smtp.gmail.com").strip() or "smtp.gmail.com"
+    try:
+        port = int(os.environ.get("SMTP_PORT", "587"))
+    except Exception:
+        port = 587
+    sender = os.environ.get("SENDER_NAME", "مكانك لمراقبة جريدة المواد - جامعة البلقاء").strip()
+    return host, port, user, pwd, sender
+
 def is_smtp_ready():
-    user = SMTP_USER.strip()
-    pwd = SMTP_PASS.strip()
+    host, port, user, pwd, sender = get_smtp_config()
     return bool(user and pwd and "your_email" not in user and "xxxx" not in pwd)
+
+def send_smtp_email(to_email, subject, html_content, plain_content=""):
+    """
+    المحرك المركزي لإرسال البريد عبر Gmail SMTP:
+    1) تجريد المسافات تلقائياً من كلمة مرور التطبيق.
+    2) تجربة المنفذ 465 (SSL) أولاً.
+    3) التراجع التلقائي للمنفذ 587 (STARTTLS) في حال فشل المنفذ الأول.
+    """
+    if not is_smtp_ready():
+        err_msg = "إعدادات SMTP غير مكتملة في متغيرات البيئة. يرجى التأكد من إضافة SMTP_USER و SMTP_PASS."
+        log.warning(f"send_smtp_email: تعذر الإرسال إلى {to_email}: {err_msg}")
+        return False, err_msg
+
+    host, port, user, pwd, sender = get_smtp_config()
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = f"{sender} <{user}>"
+        msg["To"] = to_email
+
+        if plain_content:
+            msg.attach(MIMEText(plain_content, "plain", "utf-8"))
+        msg.attach(MIMEText(html_content, "html", "utf-8"))
+
+        # 1) Attempt SSL Port 465
+        try:
+            ctx = ssl._create_unverified_context()
+            with smtplib.SMTP_SSL(host if "gmail" in host else "smtp.gmail.com", 465, context=ctx, timeout=12) as s:
+                s.login(user, pwd)
+                s.sendmail(user, [to_email], msg.as_string())
+            log.info(f"✅ أُرسل البريد الإلكتروني إلى {to_email} بنجاح عبر منفذ 465 (SSL).")
+            return True, "تم إرسال البريد الإلكتروني بنجاح (SSL 465)"
+        except Exception as e1:
+            log.warning(f"محاولة منفذ 465 فشلت لـ {to_email}: {e1} — جاري استخدام منفذ 587 (TLS)...")
+            # 2) Fallback to STARTTLS Port 587
+            try:
+                with smtplib.SMTP(host, port if port else 587, timeout=12) as s:
+                    s.starttls()
+                    s.login(user, pwd)
+                    s.sendmail(user, [to_email], msg.as_string())
+                log.info(f"✅ أُرسل البريد الإلكتروني إلى {to_email} بنجاح عبر منفذ 587 (TLS).")
+                return True, "تم إرسال البريد الإلكتروني بنجاح (TLS 587)"
+            except Exception as e2:
+                err_msg = f"فشل الإرسال على المنفذين (465: {e1} | 587: {e2})"
+                log.error(f"فشل إرسال البريد إلى {to_email}: {err_msg}")
+                return False, err_msg
+    except Exception as e:
+        err_msg = f"خطأ عام أثناء تجهيز الرسالة: {e}"
+        log.error(err_msg)
+        return False, err_msg
 
 def notify_subscribers_batch(changes):
     conn = get_db()
@@ -681,16 +747,10 @@ def format_time_12h(time_str):
     return ' | '.join(parts)
 
 def _send_email(student_name, to_email, ch, sub_id=None):
-    if not is_smtp_ready():
-        err_msg = "إعدادات البريد الإلكتروني SMTP غير مكتملة في ملف .env. يرجى تعبئة SMTP_USER و SMTP_PASS (كلمة مرور التطبيق من Google)."
-        log.warning(f"تعذر الإرسال إلى {to_email}: {err_msg}")
-        return False, err_msg
-
     unsub_html = ""
     if sub_id:
         token = _get_unsub_token(sub_id, to_email)
-        port = int(os.environ.get("PORT", 5050))
-        unsub_link = f"http://127.0.0.1:{port}/unsubscribe?id={sub_id}&token={token}"
+        unsub_link = f"https://bau-course-watcher.onrender.com/unsubscribe?id={sub_id}&token={token}"
         unsub_html = f"""
         <div style="text-align: center; margin-top: 18px; padding-top: 14px; border-top: 1px dashed #e5e7eb; font-size: .8rem; color: #6b7280;">
           تتلقى هذه الرسالة لأنك مشترك في إشعارات مكانك.<br>
@@ -739,85 +799,11 @@ def _send_email(student_name, to_email, ch, sub_id=None):
     </body>
     </html>
     """
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = f"{SENDER_NAME} <{SMTP_USER}>"
-    msg["To"] = to_email
-    msg.attach(MIMEText(html, "html", "utf-8"))
-
-    # 1) Attempt SSL Port 465
-    try:
-        ctx = ssl._create_unverified_context()
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ctx, timeout=10) as s:
-            s.login(SMTP_USER, SMTP_PASS)
-            s.sendmail(SMTP_USER, [to_email], msg.as_string())
-        log.info(f"أُرسل إشعار حقيقي إلى البريد {to_email} بنجاح عبر منفذ 465.")
-        return True, "تم إرسال البريد الإلكتروني بنجاح"
-    except Exception as e1:
-        # 2) Fallback to STARTTLS Port 587
-        try:
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as s:
-                s.starttls()
-                s.login(SMTP_USER, SMTP_PASS)
-                s.sendmail(SMTP_USER, [to_email], msg.as_string())
-            log.info(f"أُرسل إشعار حقيقي إلى البريد {to_email} بنجاح عبر منفذ 587.")
-            return True, "تم إرسال البريد الإلكتروني بنجاح"
-        except Exception as e2:
-            err_msg = f"فشل الاتصال بسيرفر البريد: {e1}"
-            log.error(err_msg)
-            return False, err_msg
+    return send_smtp_email(to_email, subject, html, f"تنبيه: {ch['course_name']} شعبة {ch['section_no']}")
 
 def send_email_single(to_email, subject, plain_body):
     """إرسال إيميل نصي بسيط (تأكيد اشتراك، ترحيب، إلخ)"""
-    if not is_smtp_ready():
-        log.warning(f"send_email_single: SMTP غير مُعدّ — تعذّر الإرسال إلى {to_email}")
-        return False
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"] = f"{SENDER_NAME} <{SMTP_USER}>"
-        msg["To"] = to_email
-        # HTML version with RTL styling
-        html_body = f"""<!DOCTYPE html>
-<html dir="rtl" lang="ar">
-<head><meta charset="UTF-8">
-<style>
-  body {{ font-family: 'Segoe UI', Tahoma, sans-serif; background:#f3f4f6; margin:0; padding:20px; direction:rtl; }}
-  .card {{ max-width:560px; margin:0 auto; background:#fff; border-radius:16px; border:1px solid #e5e7eb; overflow:hidden; }}
-  .hdr {{ background:linear-gradient(135deg,#059669,#10b981); color:#fff; padding:24px; text-align:center; }}
-  .body {{ padding:28px; line-height:1.7; color:#374151; white-space:pre-line; }}
-  .footer {{ text-align:center; padding:16px; font-size:.8rem; color:#9ca3af; border-top:1px dashed #e5e7eb; }}
-</style>
-</head>
-<body>
-<div class="card">
-  <div class="hdr"><h2 style="margin:0;">🎓 مكانك الجامعي — جامعة البلقاء</h2></div>
-  <div class="body">{plain_body}</div>
-  <div class="footer">هذا البريد أُرسل تلقائياً من نظام مكانك لمراقبة الجريدة</div>
-</div>
-</body>
-</html>"""
-        msg.attach(MIMEText(plain_body, "plain", "utf-8"))
-        msg.attach(MIMEText(html_body, "html", "utf-8"))
-
-        # Try SSL 465 first
-        try:
-            ctx = ssl._create_unverified_context()
-            with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ctx, timeout=10) as s:
-                s.login(SMTP_USER, SMTP_PASS)
-                s.sendmail(SMTP_USER, [to_email], msg.as_string())
-            log.info(f"send_email_single: أُرسل إلى {to_email} عبر منفذ 465.")
-            return True
-        except Exception as e1:
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as s:
-                s.starttls()
-                s.login(SMTP_USER, SMTP_PASS)
-                s.sendmail(SMTP_USER, [to_email], msg.as_string())
-            log.info(f"send_email_single: أُرسل إلى {to_email} عبر منفذ 587.")
-            return True
-    except Exception as e:
-        log.error(f"send_email_single: فشل الإرسال إلى {to_email}: {e}")
-        return False
+    return send_smtp_email(to_email, subject, plain_body, plain_body)[0]
 
 
 
@@ -1520,19 +1506,7 @@ def _send_welcome_email(student_name, to_email, col_q, course_q):
     </body>
     </html>
     """
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"]    = f"{SENDER_NAME} <{SMTP_USER}>"
-        msg["To"]      = to_email
-        msg.attach(MIMEText(html, "html", "utf-8"))
-        ctx = ssl._create_unverified_context()
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ctx, timeout=10) as s:
-            s.login(SMTP_USER, SMTP_PASS)
-            s.sendmail(SMTP_USER, [to_email], msg.as_string())
-        log.info(f"أُرسلت رسالة الترحيب إلى {to_email}")
-    except Exception as e:
-        log.warning(f"تعذّر إرسال رسالة الترحيب إلى {to_email}: {e}")
+    send_smtp_email(to_email, subject, html)
 
 # =========================================================================
 # Course Request API
@@ -1607,19 +1581,30 @@ def _send_course_request_email(student_name, to_email, course_no, course_name, n
     </div>
     </body></html>
     """
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"]    = f"{SENDER_NAME} <{SMTP_USER}>"
-        msg["To"]      = to_email
-        msg.attach(MIMEText(html, "html", "utf-8"))
-        ctx = ssl._create_unverified_context()
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ctx, timeout=10) as s:
-            s.login(SMTP_USER, SMTP_PASS)
-            s.sendmail(SMTP_USER, [to_email], msg.as_string())
-        log.info(f"أُرسل تأكيد طلب المادة إلى {to_email}")
-    except Exception as e:
-        log.warning(f"تعذّر إرسال تأكيد طلب المادة إلى {to_email}: {e}")
+    send_smtp_email(to_email, subject, html)
+
+@app.route("/api/test-email-public")
+def api_test_email_public():
+    """نقطة تشخيص واختبار فورية لإرسال البريد الإلكتروني."""
+    email = clean_input(request.args.get("email", "")).lower()
+    if not email or "@" not in email:
+        return jsonify(success=False, message="يرجى إدخال البريد كـ parameter ?email=your@email.com"), 400
+    
+    subject = "اختبار نجاح نظام مكانك لمراقبة الجريدة 🎓"
+    html = f"""
+    <div dir="rtl" style="font-family:'Segoe UI',sans-serif;padding:24px;background:#f3f4f6;">
+      <div style="max-width:540px;margin:0 auto;background:#fff;border-radius:16px;padding:24px;border:1px solid #e5e7eb;">
+        <h2 style="color:#059669;margin-top:0;">إشعار اختباري ناجح 🚀</h2>
+        <p>مرحباً! هذه الرسالة تأكيد أن إعدادات البريد الإلكتروني (SMTP) في خادم مكانك تعمل بكفاءة عالية 100%.</p>
+        <p>وقت الاختبار: <strong>{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</strong></p>
+      </div>
+    </div>
+    """
+    ok, err = send_smtp_email(email, subject, html, "اختبار نجاح الإرسال")
+    if ok:
+        return jsonify(success=True, message=f"تم إرسال الرسالة بنجاح إلى {email}! تفقد صندوق الوارد (Informed / Spam).")
+    else:
+        return jsonify(success=False, error=err), 500
 
 
 @app.route("/api/course-requests")
