@@ -1406,7 +1406,7 @@ def api_quick_track():
         (email, c_query, s_query)
     ).fetchone()
 
-    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     if not existing:
         conn.execute(
