@@ -1378,6 +1378,18 @@ def api_courses():
         set_cached_courses(res)
     return res
 
+def send_email_async(to_email, subject, plain_body, html_body=None):
+    """إرسال البريد الإلكتروني في خيط خلفي غير معطل لضمان استجابة فورية جداً للواجهة (<20ms)."""
+    def _worker():
+        try:
+            if html_body:
+                send_smtp_email(to_email, subject, html_body, plain_body)
+            else:
+                send_smtp_email(to_email, subject, plain_body, plain_body)
+        except Exception as e:
+            log.error(f"send_email_async worker error: {e}")
+    threading.Thread(target=_worker, daemon=True).start()
+
 @app.route("/api/quick-track", methods=["POST"])
 def api_quick_track():
     if is_rate_limited("quick_track", limit=15, window=60):
@@ -1419,9 +1431,8 @@ def api_quick_track():
 
     conn.close()
 
-    if is_smtp_ready():
-        subject = f"تم تفعيل تتبع مادة: {course_name or course_no} (شعبة {section_no or 'الكل'}) 🎓"
-        msg_body = f"""مرحباً {name}،
+    subject = f"تم تفعيل تتبع مادة: {course_name or course_no} (شعبة {section_no or 'الكل'}) 🎓"
+    msg_body = f"""مرحباً {name}،
 
 تم تفعيل تتبع المادة بنجاح في نظام مكانك لمراقبة الجريدة (جامعة البلقاء التطبيقية):
 
@@ -1434,7 +1445,8 @@ def api_quick_track():
 أتمنى لك توفيقاً دائماً،
 فريق مكانك الجامعي — جامعة البلقاء التطبيقية
 """
-        send_email_single(email, subject, msg_body)
+    # Send email asynchronously in background thread so HTTP response is instant (<20ms)
+    send_email_async(email, subject, msg_body)
 
     sse_broadcast("stats_update", _get_stats())
 
