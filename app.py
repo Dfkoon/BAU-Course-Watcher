@@ -735,6 +735,15 @@ def _get_stats():
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.environ.get("FLASK_SECRET", "bau-strict-2026")
 
+@app.after_request
+def add_security_and_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS, DELETE"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    response.headers.pop("X-Frame-Options", None)
+    return response
+
+
 @app.route("/api/stream")
 def sse_stream():
     q = queue.Queue(maxsize=200)
