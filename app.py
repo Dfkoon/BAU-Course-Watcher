@@ -31,6 +31,8 @@ from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
+import socket
+
 import pyotp
 import bcrypt
 import qrcode
@@ -42,6 +44,8 @@ from flask import Flask, request, jsonify, render_template, Response, stream_wit
 from functools import wraps
 from dotenv import load_dotenv
 
+env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+load_dotenv(dotenv_path=env_path)
 load_dotenv()
 
 # =========================================================================
