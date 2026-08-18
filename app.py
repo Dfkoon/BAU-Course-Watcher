@@ -617,12 +617,24 @@ def is_smtp_ready():
     host, port, user, pwd, sender = get_smtp_config()
     return bool(user and pwd and "your_email" not in user and "xxxx" not in pwd)
 
+def resolve_ipv4(host):
+    """تحويل اسم النطاق إلى IPv4 لتجنب مشكلة IPv6 Network is unreachable على Render."""
+    try:
+        addrs = socket.getaddrinfo(host, None, socket.AF_INET, socket.SOCK_STREAM)
+        if addrs:
+            ip = addrs[0][4][0]
+            log.info(f"Resolved {host} to IPv4: {ip}")
+            return ip
+    except Exception as e:
+        log.warning(f"resolve_ipv4 failed for {host}: {e}")
+    return host
+
 def send_smtp_email(to_email, subject, html_content, plain_content=""):
     """
     المحرك المركزي لإرسال البريد عبر Gmail SMTP:
-    1) تجريد المسافات تلقائياً من كلمة مرور التطبيق.
-    2) تجربة المنفذ 465 (SSL) أولاً.
-    3) التراجع التلقائي للمنفذ 587 (STARTTLS) في حال فشل المنفذ الأول.
+    1) يجبر استخدام IPv4 لمنع خطأ Network is unreachable في سحابة Render.
+    2) تجريد المسافات تلقائياً من كلمة مرور التطبيق.
+    3) تجربة المنفذ 465 (SSL) والمنفذ 587 (STARTTLS).
     """
     if not is_smtp_ready():
         err_msg = "إعدادات SMTP غير مكتملة في متغيرات البيئة. يرجى التأكد من إضافة SMTP_USER و SMTP_PASS."
@@ -630,6 +642,7 @@ def send_smtp_email(to_email, subject, html_content, plain_content=""):
         return False, err_msg
 
     host, port, user, pwd, sender = get_smtp_config()
+    target_ip = resolve_ipv4(host)
 
     try:
         msg = MIMEMultipart("alternative")
@@ -641,23 +654,23 @@ def send_smtp_email(to_email, subject, html_content, plain_content=""):
             msg.attach(MIMEText(plain_content, "plain", "utf-8"))
         msg.attach(MIMEText(html_content, "html", "utf-8"))
 
-        # 1) Attempt SSL Port 465
+        # 1) Attempt SSL Port 465 with IPv4
         try:
             ctx = ssl._create_unverified_context()
-            with smtplib.SMTP_SSL(host if "gmail" in host else "smtp.gmail.com", 465, context=ctx, timeout=12) as s:
+            with smtplib.SMTP_SSL(target_ip, 465, context=ctx, timeout=12, server_hostname=host) as s:
                 s.login(user, pwd)
                 s.sendmail(user, [to_email], msg.as_string())
-            log.info(f"✅ أُرسل البريد الإلكتروني إلى {to_email} بنجاح عبر منفذ 465 (SSL).")
+            log.info(f"✅ أُرسل البريد الإلكتروني إلى {to_email} بنجاح عبر منفذ 465 (SSL IPv4).")
             return True, "تم إرسال البريد الإلكتروني بنجاح (SSL 465)"
         except Exception as e1:
             log.warning(f"محاولة منفذ 465 فشلت لـ {to_email}: {e1} — جاري استخدام منفذ 587 (TLS)...")
-            # 2) Fallback to STARTTLS Port 587
+            # 2) Fallback to STARTTLS Port 587 with IPv4
             try:
-                with smtplib.SMTP(host, port if port else 587, timeout=12) as s:
-                    s.starttls()
+                with smtplib.SMTP(target_ip, port if port else 587, timeout=12) as s:
+                    s.starttls(context=ssl._create_unverified_context())
                     s.login(user, pwd)
                     s.sendmail(user, [to_email], msg.as_string())
-                log.info(f"✅ أُرسل البريد الإلكتروني إلى {to_email} بنجاح عبر منفذ 587 (TLS).")
+                log.info(f"✅ أُرسل البريد الإلكتروني إلى {to_email} بنجاح عبر منفذ 587 (TLS IPv4).")
                 return True, "تم إرسال البريد الإلكتروني بنجاح (TLS 587)"
             except Exception as e2:
                 err_msg = f"فشل الإرسال على المنفذين (465: {e1} | 587: {e2})"
