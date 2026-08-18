@@ -274,6 +274,26 @@
     .badge-open     { display:inline-block; background:#d1fae5; color:#065f46; padding:3px 10px; border-radius:50px; font-weight:700; font-size:.8rem; border:1px solid #a7f3d0; }
     .badge-closed   { display:inline-block; background:#fee2e2; color:#991b1b; padding:3px 10px; border-radius:50px; font-weight:700; font-size:.8rem; border:1px solid #fecaca; }
     .badge-cancelled{ display:inline-block; background:#f3f4f6; color:#6b7280; padding:3px 10px; border-radius:50px; font-weight:700; font-size:.8rem; border:1px solid #e5e7eb; }
+    .btn-track-course {
+      background: linear-gradient(135deg, #059669, #10b981);
+      color: #fff; border: none; padding: 6px 14px;
+      border-radius: 8px; font-family: 'Cairo', sans-serif;
+      font-size: .82rem; font-weight: 700; cursor: pointer;
+      box-shadow: 0 2px 6px rgba(16,185,129,.25);
+      transition: all .2s ease; white-space: nowrap;
+      display: inline-flex; align-items: center; gap: 5px;
+    }
+    .btn-track-course:hover {
+      transform: translateY(-1.5px);
+      box-shadow: 0 4px 12px rgba(16,185,129,.35);
+      background: linear-gradient(135deg, #047857, #059669);
+    }
+    .badge-tracked {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: #d1fae5; color: #065f46;
+      padding: 4px 10px; border-radius: 8px;
+      font-size: .82rem; font-weight: 700; border: 1px solid #a7f3d0;
+    }
 
     /* Modal */
     .auth-modal {
@@ -507,7 +527,8 @@
       <table class="tbl">
         <thead>
           <tr>
-            <th>المادة والرمز</th>
+            <th>رقم المادة</th>
+            <th>اسم المادة</th>
             <th>ش</th>
             <th>الحالة</th>
             <th>طبيعة المادة</th>
@@ -515,9 +536,10 @@
             <th>المدرس</th>
             <th>القاعة</th>
             <th>الكلية والقسم</th>
+            <th style="text-align:center;">تتبع</th>
           </tr>
         </thead>
-        <tbody id="coursesTb"><tr><td colspan="8" class="empty">جاري التحميل...</td></tr></tbody>
+        <tbody id="coursesTb"><tr><td colspan="10" class="empty">جاري التحميل...</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -619,6 +641,11 @@ async function submitStudentGoogleLogin() {
     closeAuthModal();
     renderUserUI();
     showToast(`أهلاً بك ${currentUser.name}!`, 'success');
+    if (pendingTrackData) {
+      const { cNo, cName, secNo, colName } = pendingTrackData;
+      pendingTrackData = null;
+      executeQuickTrack(currentUser.name, currentUser.email, cNo, cName, secNo, colName);
+    }
   }
 }
 
@@ -631,7 +658,12 @@ async function doGuestLogin() {
     currentUser = data.user;
     closeAuthModal();
     renderUserUI();
-    showToast('تم الدخول كضيف بنجاح', 'success');
+    showToast('تم الدخول بنجاح', 'success');
+    if (pendingTrackData) {
+      const { cNo, cName, secNo, colName } = pendingTrackData;
+      pendingTrackData = null;
+      executeQuickTrack(currentUser.name, currentUser.email, cNo, cName, secNo, colName);
+    }
   }
 }
 
@@ -878,6 +910,56 @@ function formatTime12h(timeStr) {
   return parts.length ? parts.join('') : timeStr;
 }
 
+let trackedCoursesSet = new Set(JSON.parse(localStorage.getItem('tracked_courses_v1') || '[]'));
+
+function isCourseTrackedByUser(cNo, secNo) {
+  return trackedCoursesSet.has(`${cNo}:${secNo}`);
+}
+
+function markCourseAsTracked(cNo, secNo) {
+  trackedCoursesSet.add(`${cNo}:${secNo}`);
+  localStorage.setItem('tracked_courses_v1', JSON.stringify([...trackedCoursesSet]));
+}
+
+async function handleQuickTrack(cNo, cName, secNo, colName) {
+  if (currentUser && currentUser.email) {
+    executeQuickTrack(currentUser.name, currentUser.email, cNo, cName, secNo, colName);
+  } else {
+    openAuthModal();
+    showToast(`يرجى تزويد بريدك الإلكتروني لتفعيل تتبع مادة (${cName}) شعبة (${secNo})`, 'info');
+  }
+}
+
+async function executeQuickTrack(name, email, cNo, cName, secNo, colName) {
+  const body = {
+    name: name || 'طالب',
+    email: email,
+    course_no: cNo,
+    course_name: cName,
+    section_no: secNo,
+    college_name: colName
+  };
+
+  try {
+    const res = await fetch('/api/quick-track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (data.success) {
+      markCourseAsTracked(cNo, secNo);
+      showToast(data.message, 'success');
+      loadCourses();
+      if (currentUser) loadMySubscriptions();
+    } else {
+      showToast(data.error || 'حدث خطأ أثناء التتبع', 'error');
+    }
+  } catch (err) {
+    showToast('تعذر الاتصال بالسيرفر، يرجى المحاولة لاحقاً', 'error');
+  }
+}
+
 // ─────────────── COURSES TABLE ───────────────
 async function loadCourses() {
   const q    = encodeURIComponent(document.getElementById('sSearch').value);
@@ -888,7 +970,7 @@ async function loadCourses() {
   const data = await res.json();
   const tb   = document.getElementById('coursesTb');
   if (!data.courses.length) {
-    tb.innerHTML = '<tr><td colspan="8" class="empty">لا توجد نتائج للتصفية المحددة</td></tr>';
+    tb.innerHTML = '<tr><td colspan="10" class="empty">لا توجد نتائج للتصفية المحددة</td></tr>';
     return;
   }
   const statusBadge = s => {
@@ -904,9 +986,16 @@ async function loadCourses() {
     return `<span style="display:inline-block;background:#f3f4f6;color:#374151;padding:3px 10px;border-radius:50px;font-weight:700;font-size:.8rem;">${r}</span>`;
   };
 
-  tb.innerHTML = data.courses.map(c => `
+  tb.innerHTML = data.courses.map(c => {
+    const isTracked = isCourseTrackedByUser(c.course_no, c.section_no);
+    const trackBtn = isTracked 
+      ? `<span class="badge-tracked"><i class="fa-solid fa-check"></i> جاري التتبع</span>`
+      : `<button class="btn-track-course" onclick="handleQuickTrack('${c.course_no}', '${(c.course_name||'').replace(/'/g, "\\'")}', '${c.section_no}', '${(c.college_name||'').replace(/'/g, "\\'")}')"><i class="fa-solid fa-bell"></i> تتبع</button>`;
+
+    return `
     <tr>
-      <td><strong>${c.course_name}</strong><br><small style="color:#6b7280">${c.course_no}</small></td>
+      <td style="font-weight:700; font-family:monospace; font-size:.9rem; color:#065f46;">${c.course_no}</td>
+      <td><strong style="color:#0f172a; font-size:.95rem;">${c.course_name}</strong></td>
       <td style="text-align:center;font-weight:700;">${c.section_no}</td>
       <td>${statusBadge(c.status)}</td>
       <td>${formatRemarks(c.remarks)}</td>
@@ -914,7 +1003,9 @@ async function loadCourses() {
       <td style="font-size:.82rem;">${c.lecturers||'—'}</td>
       <td style="font-size:.82rem;">${c.rooms||'—'}</td>
       <td><strong style="color:#111;">${c.college_name||'—'}</strong><br><small style="color:#059669;font-weight:700;"><i class="fa-solid fa-layer-group"></i> ${c.department_name||'عام'}</small></td>
-    </tr>`).join('');
+      <td style="text-align:center;">${trackBtn}</td>
+    </tr>`;
+  }).join('');
 }
 
 // ─────────────── TOAST ───────────────

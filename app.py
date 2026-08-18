@@ -35,6 +35,9 @@ import pyotp
 import bcrypt
 import qrcode
 
+import collections
+import html
+
 from flask import Flask, request, jsonify, render_template, Response, stream_with_context, session, redirect, url_for, send_file
 from functools import wraps
 from dotenv import load_dotenv
@@ -121,12 +124,60 @@ def sse_broadcast(event_type: str, payload: dict):
         for q in dead:
             _sse_clients.remove(q)
 
+# ── Security & Rate Limiting Helpers ─────────────────────────────────────
+_rate_limit_store = collections.defaultdict(list)
+_rate_limit_lock = threading.Lock()
+
+def is_rate_limited(action_key: str, limit: int = 30, window: int = 60) -> bool:
+    """Simple in-memory rate limiter per client IP address."""
+    ip = request.headers.get("X-Forwarded-For", request.remote_addr or "127.0.0.1").split(",")[0].strip()
+    key = f"{action_key}:{ip}"
+    now = time.time()
+    with _rate_limit_lock:
+        timestamps = [t for t in _rate_limit_store[key] if now - t < window]
+        if len(timestamps) >= limit:
+            _rate_limit_store[key] = timestamps
+            return True
+        timestamps.append(now)
+        _rate_limit_store[key] = timestamps
+        return False
+
+def clean_input(val, max_len: int = 250) -> str:
+    """Sanitize user input to prevent XSS and HTML injection."""
+    if not val:
+        return ""
+    cleaned = re.sub(r'<[^>]*>', '', str(val))
+    return cleaned.strip()[:max_len]
+
+# ── High Performance Courses In-Memory Cache ──────────────────────────────
+_courses_cache = {"timestamp": 0, "data": None}
+_cache_lock = threading.Lock()
+
+def get_cached_courses(q, col, dept, status, limit):
+    if not q and not col and not dept and not status and limit == 300:
+        now = time.time()
+        with _cache_lock:
+            if _courses_cache["data"] and (now - _courses_cache["timestamp"] < 15):
+                return _courses_cache["data"]
+    return None
+
+def set_cached_courses(data):
+    with _cache_lock:
+        _courses_cache["timestamp"] = time.time()
+        _courses_cache["data"] = data
+
+def clear_courses_cache():
+    with _cache_lock:
+        _courses_cache["data"] = None
+
 # =========================================================================
 # Database Setup
 # =========================================================================
 
 def get_db():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute("PRAGMA synchronous = NORMAL")
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -211,6 +262,12 @@ def init_db():
             notes TEXT,
             created_at TEXT NOT NULL
         );
+
+        CREATE INDEX IF NOT EXISTS idx_cs_status ON course_state(status);
+        CREATE INDEX IF NOT EXISTS idx_cs_college ON course_state(college_name);
+        CREATE INDEX IF NOT EXISTS idx_cs_dept ON course_state(department_name);
+        CREATE INDEX IF NOT EXISTS idx_cs_no ON course_state(course_no);
+        CREATE INDEX IF NOT EXISTS idx_cs_name ON course_state(course_name);
     """)
     conn.commit()
 
@@ -225,7 +282,7 @@ def init_db():
             ("totp_secret", totp_secret),
             ("totp_enabled", "0"),
         ]:
-            conn.execute("INSERT OR IGNORE INTO admin_config (key, value) VALUES (?, ?)", (k, v))
+            conn.execute("INSERT OR REPLACE INTO admin_config (key, value) VALUES (?, ?)", (k, v))
         conn.commit()
         log.info(f"تم إنشاء حساب الأدمن الأولي: username='{ADMIN_USERNAME_SEED}'")
 
@@ -518,6 +575,7 @@ def watcher_loop():
         try:
             log.info("جاري فحص جريدة المواد من سيرفر البلقاء...")
             real_changes = run_one_check()
+            clear_courses_cache()
 
             if real_changes:
                 log.info(f"رُصد {len(real_changes)} تغيير حقيقي في الجريدة الرسمية! جاري الإشعار...")
@@ -1162,11 +1220,18 @@ def api_delete_sub(sid):
 
 @app.route("/api/courses")
 def api_courses():
-    q = request.args.get("query", "").strip()
-    col = request.args.get("college", "").strip()
-    dept = request.args.get("dept", "").strip()
-    status = request.args.get("status", "").strip()
-    limit = int(request.args.get("limit", 300))
+    q = clean_input(request.args.get("query", ""))
+    col = clean_input(request.args.get("college", ""))
+    dept = clean_input(request.args.get("dept", ""))
+    status = clean_input(request.args.get("status", ""))
+    try:
+        limit = min(int(request.args.get("limit", 300)), 1000)
+    except Exception:
+        limit = 300
+
+    cached = get_cached_courses(q, col, dept, status, limit)
+    if cached is not None:
+        return cached
 
     sql, params = "SELECT * FROM course_state WHERE 1=1", []
     if q:
@@ -1190,7 +1255,76 @@ def api_courses():
     conn = get_db()
     rows = [dict(r) for r in conn.execute(sql, params).fetchall()]
     conn.close()
-    return jsonify(success=True, count=len(rows), courses=rows)
+
+    res = jsonify(success=True, count=len(rows), courses=rows)
+    if not q and not col and not dept and not status and limit == 300:
+        set_cached_courses(res)
+    return res
+
+@app.route("/api/quick-track", methods=["POST"])
+def api_quick_track():
+    if is_rate_limited("quick_track", limit=15, window=60):
+        return jsonify(success=False, error="تجاوزت حد المحاولات المسموح به، يرجى الانتظار دقيقة واحدة."), 429
+
+    data = request.get_json(silent=True) or request.form
+    name = clean_input(data.get("name", "طالب"))
+    email = clean_input(data.get("email", "")).lower()
+    course_no = clean_input(data.get("course_no", ""))
+    course_name = clean_input(data.get("course_name", ""))
+    section_no = clean_input(data.get("section_no", ""))
+    college_name = clean_input(data.get("college_name", ""))
+
+    if not email or "@" not in email or "." not in email:
+        return jsonify(success=False, error="يرجى إدخال بريد إلكتروني صحيح لتلقي الإشعارات."), 400
+
+    if not course_no and not course_name:
+        return jsonify(success=False, error="يرجى تحديد المادة المراد تتبعها."), 400
+
+    conn = get_db()
+    c_query = course_no or course_name
+    s_query = section_no or "ALL"
+
+    existing = conn.execute(
+        "SELECT id, active FROM subscribers WHERE email=? AND course_query=? AND (section_query=? OR section_query='ALL')",
+        (email, c_query, s_query)
+    ).fetchone()
+
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    if not existing:
+        conn.execute(
+            """INSERT INTO subscribers 
+               (name, email, phone, college_query, course_query, section_query, active, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, 1, ?)""",
+            (name, email, "", college_name or "ALL", c_query, s_query, now_str)
+        )
+        conn.commit()
+
+    conn.close()
+
+    if is_smtp_ready():
+        subject = f"تم تفعيل تتبع مادة: {course_name or course_no} (شعبة {section_no or 'الكل'}) 🎓"
+        msg_body = f"""مرحباً {name}،
+
+تم تفعيل تتبع المادة بنجاح في نظام مكانك لمراقبة الجريدة (جامعة البلقاء التطبيقية):
+
+📌 المادة: {course_name} ({course_no})
+🔢 الشعبة: {section_no or 'جميع الشعب'}
+🏛️ الكلية: {college_name or 'جميع الكليات'}
+
+سنقوم بمراقبة سيرفرات الجامعة بانتظام وإرسال إشعار فوري إلى بريدك الإلكتروني ({email}) فور حدوث أي تغيير أو فتح للشعبة.
+
+أتمنى لك توفيقاً دائماً،
+فريق مكانك الجامعي — جامعة البلقاء التطبيقية
+"""
+        send_email_single(email, subject, msg_body)
+
+    sse_broadcast("stats_update", _get_stats())
+
+    return jsonify(
+        success=True,
+        message=f"تم تفعيل تتبع مادة ({course_name or course_no} - شعبة {section_no or 'الكل'}) بنجاح وإرسال رسالة تأكيد إلى بريدك ({email})."
+    )
 
 @app.route("/api/colleges")
 def api_colleges():
