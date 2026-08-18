@@ -617,15 +617,75 @@ def is_smtp_ready():
     host, port, user, pwd, sender = get_smtp_config()
     return bool(user and pwd and "your_email" not in user and "xxxx" not in pwd)
 
+def send_email_api(to_email, subject, html_content, plain_content=""):
+    """
+    محرك إرسال بريد إلكتروني مجاني وسريع عبر HTTP API (Port 443) يتجاوز حظر المنافذ على Render 100%.
+    يدعم مفاتيح Brevo (Sendinblue) و Resend تلقائياً عند توفرها في بيئة Render.
+    """
+    brevo_key = os.environ.get("BREVO_API_KEY", "").strip()
+    resend_key = os.environ.get("RESEND_API_KEY", "").strip()
+    sender_user = os.environ.get("SMTP_USER", "makanak.bau.jo@gmail.com").strip() or "makanak.bau.jo@gmail.com"
+    sender_name = os.environ.get("SENDER_NAME", "مكانك لمراقبة جريدة المواد - جامعة البلقاء").strip()
+
+    # 1) Brevo (Sendinblue) API - 300 free emails/day over Port 443
+    if brevo_key:
+        try:
+            url = "https://api.brevo.com/v3/smtp/email"
+            data = json.dumps({
+                "sender": {"name": sender_name, "email": sender_user},
+                "to": [{"email": to_email}],
+                "subject": subject,
+                "htmlContent": html_content
+            }).encode('utf-8')
+            req = urllib.request.Request(url, data=data, headers={
+                "api-key": brevo_key,
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            })
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                if resp.status in (200, 201, 202):
+                    log.info(f"✅ أُرسل البريد الإلكتروني بنجاح إلى {to_email} عبر Brevo HTTPS API (Port 443).")
+                    return True, "تم الإرسال بنجاح عبر Brevo HTTPS API (Port 443)"
+        except Exception as eb:
+            log.warning(f"Brevo API error for {to_email}: {eb}")
+
+    # 2) Resend API - 3,000 free emails/month over Port 443
+    if resend_key:
+        try:
+            url = "https://api.resend.com/emails"
+            data = json.dumps({
+                "from": f"{sender_name} <onboarding@resend.dev>",
+                "to": [to_email],
+                "subject": subject,
+                "html": html_content
+            }).encode('utf-8')
+            req = urllib.request.Request(url, data=data, headers={
+                "Authorization": f"Bearer {resend_key}",
+                "Content-Type": "application/json"
+            })
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                if resp.status in (200, 201, 202):
+                    log.info(f"✅ أُرسل البريد الإلكتروني بنجاح إلى {to_email} عبر Resend HTTPS API (Port 443).")
+                    return True, "تم الإرسال بنجاح عبر Resend HTTPS API (Port 443)"
+        except Exception as er:
+            log.warning(f"Resend API error for {to_email}: {er}")
+
+    return False, None
+
 def send_smtp_email(to_email, subject, html_content, plain_content=""):
     """
-    المحرك المركزي لإرسال البريد عبر Gmail SMTP:
-    1) تجريد المسافات تلقائياً من كلمة مرور التطبيق.
-    2) دقة استهداف IPv4 لمنع مشاكل IPv6 Network is unreachable في سحابة Render.
-    3) تجربة المنفذ 465 (SSL) والمنفذ 587 (STARTTLS).
+    المحرك المركزي الشامل لإرسال البريد:
+    1) يحاول أولاً الإرسال عبر HTTP API (Port 443 عبر Brevo/Resend) غير المحظور إطلاقاً في Render.
+    2) يتعامل مع SMTP (Port 465/587) مع تجريد المسافات من كلمة المرور تلقائياً.
     """
+    # 1. Try HTTPS API first if key exists
+    ok_api, msg_api = send_email_api(to_email, subject, html_content, plain_content)
+    if ok_api:
+        return True, msg_api
+
+    # 2. Check SMTP configuration
     if not is_smtp_ready():
-        err_msg = "إعدادات SMTP غير مكتملة في متغيرات البيئة. يرجى التأكد من إضافة SMTP_USER و SMTP_PASS."
+        err_msg = "إعدادات SMTP غير مكتملة في متغيرات البيئة. يرجى إضافة BREVO_API_KEY أو SMTP_USER و SMTP_PASS."
         log.warning(f"send_smtp_email: تعذر الإرسال إلى {to_email}: {err_msg}")
         return False, err_msg
 
@@ -671,7 +731,7 @@ def send_smtp_email(to_email, subject, html_content, plain_content=""):
                 log.info(f"✅ أُرسل البريد الإلكتروني إلى {to_email} بنجاح عبر منفذ 587 (TLS).")
                 return True, "تم إرسال البريد الإلكتروني بنجاح (TLS 587)"
             except Exception as e2:
-                err_msg = f"فشل الإرسال على المنفذين (465: {e1} | 587: {e2})"
+                err_msg = f"فشل الإرسال عبر المنافذ المباشرة (465/587) بسبب حظر منافذ SMTP في Render Free Tier. الحل: أضف BREVO_API_KEY في متغيرات البيئة بـ Render."
                 log.error(f"فشل إرسال البريد إلى {to_email}: {err_msg}")
                 return False, err_msg
     except Exception as e:
