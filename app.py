@@ -642,7 +642,13 @@ def send_smtp_email(to_email, subject, html_content, plain_content=""):
         return False, err_msg
 
     host, port, user, pwd, sender = get_smtp_config()
-    target_ip = resolve_ipv4(host)
+
+    # Monkeypatch socket.getaddrinfo to strictly force AF_INET (IPv4) on Render
+    old_getaddrinfo = socket.getaddrinfo
+    def getaddrinfo_ipv4(h, p, family=0, type=0, proto=0, flags=0):
+        return old_getaddrinfo(h, p, socket.AF_INET, type, proto, flags)
+
+    socket.getaddrinfo = getaddrinfo_ipv4
 
     try:
         msg = MIMEMultipart("alternative")
@@ -654,20 +660,23 @@ def send_smtp_email(to_email, subject, html_content, plain_content=""):
             msg.attach(MIMEText(plain_content, "plain", "utf-8"))
         msg.attach(MIMEText(html_content, "html", "utf-8"))
 
-        # 1) Attempt SSL Port 465 with IPv4
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+
+        # 1) Attempt SSL Port 465
         try:
-            ctx = ssl._create_unverified_context()
-            with smtplib.SMTP_SSL(target_ip, 465, context=ctx, timeout=12, server_hostname=host) as s:
+            with smtplib.SMTP_SSL(host if "gmail" in host else "smtp.gmail.com", 465, context=ctx, timeout=12) as s:
                 s.login(user, pwd)
                 s.sendmail(user, [to_email], msg.as_string())
             log.info(f"✅ أُرسل البريد الإلكتروني إلى {to_email} بنجاح عبر منفذ 465 (SSL IPv4).")
             return True, "تم إرسال البريد الإلكتروني بنجاح (SSL 465)"
         except Exception as e1:
             log.warning(f"محاولة منفذ 465 فشلت لـ {to_email}: {e1} — جاري استخدام منفذ 587 (TLS)...")
-            # 2) Fallback to STARTTLS Port 587 with IPv4
+            # 2) Fallback to STARTTLS Port 587
             try:
-                with smtplib.SMTP(target_ip, port if port else 587, timeout=12) as s:
-                    s.starttls(context=ssl._create_unverified_context())
+                with smtplib.SMTP(host if "gmail" in host else "smtp.gmail.com", port if port else 587, timeout=12) as s:
+                    s.starttls(context=ctx)
                     s.login(user, pwd)
                     s.sendmail(user, [to_email], msg.as_string())
                 log.info(f"✅ أُرسل البريد الإلكتروني إلى {to_email} بنجاح عبر منفذ 587 (TLS IPv4).")
@@ -680,6 +689,8 @@ def send_smtp_email(to_email, subject, html_content, plain_content=""):
         err_msg = f"خطأ عام أثناء تجهيز الرسالة: {e}"
         log.error(err_msg)
         return False, err_msg
+    finally:
+        socket.getaddrinfo = old_getaddrinfo
 
 def notify_subscribers_batch(changes):
     conn = get_db()
