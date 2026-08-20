@@ -1526,8 +1526,80 @@ def api_quick_track():
 
     conn.close()
 
+    # إنشاء قالب إيميل HTML رسمي وفخم مع كامل تفاصيل المادة والكلية والقسم
     subject = f"تم تفعيل تتبع مادة: {course_name or course_no} (شعبة {section_no or 'الكل'}) 🎓"
-    msg_body = f"""مرحباً {name}،
+    
+    html_body = f"""
+    <!DOCTYPE html>
+    <html dir="rtl" lang="ar">
+    <head><meta charset="UTF-8">
+    <style>
+      body {{ font-family:'Segoe UI',Tahoma,Arial,sans-serif; background:#f4f6f8; margin:0; padding:20px; }}
+      .card {{ max-width:580px; margin:0 auto; background:#ffffff; border-radius:18px; overflow:hidden; border:1px solid #e2e8f0; box-shadow:0 10px 25px rgba(0,0,0,0.05); }}
+      .hdr {{ background:linear-gradient(135deg,#064e3b,#059669); color:#ffffff; padding:28px 24px; text-align:center; }}
+      .hdr h1 {{ margin:0 0 4px; font-size:1.35rem; font-weight:800; }}
+      .hdr p {{ margin:0; opacity:.9; font-size:.92rem; }}
+      .body {{ padding:28px 24px; }}
+      .greeting {{ font-size:1.05rem; color:#1e293b; font-weight:700; margin-bottom:12px; }}
+      .desc {{ color:#475569; font-size:.92rem; line-height:1.7; margin-bottom:20px; }}
+      .info-box {{ background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:14px; padding:18px; margin:16px 0; }}
+      .info-row {{ display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px dashed #cbd5e1; }}
+      .info-row:last-child {{ border-bottom:none; }}
+      .info-label {{ font-size:.88rem; color:#64748b; font-weight:600; }}
+      .info-val {{ font-size:.95rem; color:#0f172a; font-weight:700; }}
+      .badge-track {{ background:#ecfdf5; color:#047857; padding:4px 12px; border-radius:50px; font-weight:700; font-size:.82rem; border:1px solid #a7f3d0; }}
+      .footer {{ text-align:center; color:#94a3b8; font-size:.8rem; padding:20px 24px; border-top:1px solid #f1f5f9; background:#fafafa; }}
+    </style>
+    </head>
+    <body>
+      <div class="card">
+        <div class="hdr">
+          <h1>مكانك لمراقبة جريدة المواد</h1>
+          <p>جامعة البلقاء التطبيقية 🎓</p>
+        </div>
+        <div class="body">
+          <div class="greeting">مرحباً {name} 👋</div>
+          <div class="desc">
+            تم تفعيل نظام المراقبة الفورية لمادتك بنجاح. سيقوم النظام بفحص سيرفرات الجامعة بانتظام وإشعارك في نفس اللحظة التي تفتح فيها الشعبة أو يتاح التسجيل بها!
+          </div>
+
+          <div class="info-box">
+            <div class="info-row">
+              <span class="info-label">📌 اسم المادة:</span>
+              <span class="info-val" style="color:#065f46;">{course_name or '—'}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">🔢 رمز المادة:</span>
+              <span class="info-val" style="font-family:monospace; color:#0284c7;">{course_no or '—'}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">👥 رقم الشعبة:</span>
+              <span class="info-val">{section_no or 'كافة الشعب'}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">🏛️ الكلية والقسم:</span>
+              <span class="info-val">{college_name or 'الكلية المعنية'}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">⚡ حالة المراقبة:</span>
+              <span class="badge-track">🟢 نشطة وتعمل الآن</span>
+            </div>
+          </div>
+
+          <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:12px; padding:14px; margin-top:20px; font-size:.88rem; color:#1e40af; line-height:1.6;">
+            💡 <strong>تنبيه:</strong> تأكد من تفعيل بوت تلغرام الرسمي الخاص بمكانك لتصلك إشعارات فورية مباشرة على هاتفك بدقة وسرعة فائقة.
+          </div>
+        </div>
+        <div class="footer">
+          مكانك لمراقبة جريدة المواد — جامعة البلقاء التطبيقية &copy; 2026<br>
+          نتمنى لك فصلاً دراسياً موفقاً ومليئاً بالنجاح والتفوق! ✨
+        </div>
+      </div>
+    </body>
+    </html>
+    """
+
+    plain_body = f"""مرحباً {name}،
 
 تم تفعيل تتبع المادة بنجاح في نظام مكانك لمراقبة الجريدة (جامعة البلقاء التطبيقية):
 
@@ -1535,13 +1607,13 @@ def api_quick_track():
 🔢 الشعبة: {section_no or 'جميع الشعب'}
 🏛️ الكلية: {college_name or 'جميع الكليات'}
 
-سنقوم بمراقبة سيرفرات الجامعة بانتظام وإرسال إشعار فوري إلى بريدك الإلكتروني ({email}) فور حدوث أي تغيير أو فتح للشعبة.
+سنقوم بمراقبة سيرفرات الجامعة وإرسال إشعار فوري إليك فور حدوث أي تغيير أو فتح للشعبة.
 
-أتمنى لك توفيقاً دائماً،
 فريق مكانك الجامعي — جامعة البلقاء التطبيقية
 """
-    # Send email asynchronously in background thread so HTTP response is instant (<20ms)
-    send_email_async(email, subject, msg_body)
+
+    # Send rich HTML email asynchronously in background thread (<20ms HTTP response)
+    send_email_async(email, subject, plain_body, html_body=html_body)
 
     sse_broadcast("stats_update", _get_stats())
 
