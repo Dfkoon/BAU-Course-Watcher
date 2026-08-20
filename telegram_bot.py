@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 telegram_bot.py — نظام إشعارات تلغرام الذكي لمشروع مكانك الجامعي (BAU Course Watcher)
-يدعم تفعيل الاشتراك المباشر ونظام الـ One-Click التلقائي.
+يعرض تفاصيل المادة، رقم الشعبة، الأيام والأوقات، القاعة والمدرس فور الاشتراك.
 """
-import os, uuid, logging, sqlite3, requests
+import os, uuid, logging, sqlite3, requests, json
 from datetime import datetime
 from flask import Blueprint, request, jsonify
 
@@ -77,6 +77,23 @@ def send_telegram_message(chat_id, text):
 
 def is_telegram_ready(): return bool(TELEGRAM_BOT_TOKEN)
 
+def _format_times_friendly(times_raw):
+    if not times_raw: return "غير محدد"
+    try:
+        arr = json.loads(times_raw) if isinstance(times_raw, str) and times_raw.startswith("[") else []
+        if arr:
+            day_map = {"1": "أحد", "2": "إثنين", "3": "ثلاثاء", "4": "أربعاء", "5": "خميس"}
+            formatted = []
+            for item in arr:
+                days = " - ".join([day_map.get(d, d) for d in item.get("days", [])])
+                f_time = item.get("from_time", "")
+                t_time = item.get("to_time", "")
+                formatted.append(f"{days} ({f_time} - {t_time})")
+            return " | ".join(formatted)
+    except Exception:
+        pass
+    return str(times_raw)
+
 telegram_bp = Blueprint("telegram_bp", __name__)
 
 @telegram_bp.route("/telegram/webhook", methods=["POST"])
@@ -91,45 +108,80 @@ def telegram_webhook():
 
     if text.startswith("/start"):
         parts = text.split(" ", 1)
-        if len(parts) > 1 and parts[1].strip():
-            token = parts[1].strip()
-            conn  = _get_conn()
-            row   = conn.execute("SELECT * FROM telegram_links WHERE link_token=?", (token,)).fetchone()
-            
-            # في حال لم يجد التوكن مباشرة، افحص subscribers
+        token = parts[1].strip() if len(parts) > 1 else None
+        conn  = _get_conn()
+
+        row = None
+        if token:
+            row = conn.execute("SELECT * FROM telegram_links WHERE link_token=?", (token,)).fetchone()
             if not row:
                 sub_row = conn.execute("SELECT email, name FROM subscribers WHERE email LIKE ? ORDER BY id DESC LIMIT 1", (f"%{token}%",)).fetchone()
                 if sub_row:
                     row = {"email": sub_row["email"], "link_token": token}
 
-            if row:
-                conn.execute("INSERT OR REPLACE INTO telegram_links (email, chat_id, link_token, created_at) VALUES (?, ?, ?, ?)",
-                             (row["email"], str(chat_id), token, datetime.now().isoformat()))
-                conn.commit()
+        # إذا لم يكن هناك توكن أو لم يُعثر عليه، ابحث عن آخر اشتراك مربوط بهذا الشات أو غير مفعل
+        if not row:
+            row = conn.execute("SELECT * FROM telegram_links WHERE chat_id=? ORDER BY created_at DESC LIMIT 1", (str(chat_id),)).fetchone()
 
-                # جلب أسماء المواد التي يتابعها الطالب
-                subs = conn.execute("SELECT course_query, section_query FROM subscribers WHERE email=? AND active=1", (row["email"],)).fetchall()
-                courses_text = "\n".join([f"  • <b>{s['course_query']}</b> (شعبة: {s['section_query'] or 'الكل'})" for s in subs]) if subs else "كافة المواد المحددة"
+        if not row:
+            # خذ آخر اشتراك مضاف في النظام
+            latest_sub = conn.execute("SELECT email, name FROM subscribers ORDER BY id DESC LIMIT 1").fetchone()
+            if latest_sub:
+                row = {"email": latest_sub["email"], "link_token": token or "DIRECT"}
 
-                welcome_msg = (
-                    f"أهلاً بك <b>{first_name}</b> في نظام مكانك الجامعي! 🎓\n\n"
-                    f"✅ <b>تم تفعيل الإشعارات الفورية بنجاح عبر تلغرام!</b>\n\n"
-                    f"📌 <b>المواد قيد المراقبة الآن:</b>\n{courses_text}\n\n"
-                    f"⚡ ستصلك رسالة هنا في نفس ثانية فتح الشعبة أو إتاحتها للتسجيل."
-                )
-                send_telegram_message(chat_id, welcome_msg)
-                log.info(f"✅ ربط تلغرام ناجح: {row['email']} <- chat_id={chat_id}")
-            else:
-                send_telegram_message(chat_id,
-                    f"أهلاً بك {first_name}! 🎓\n\n"
-                    f"✅ تم استقبال طلبك بنجاح وسنقوم بإرسال التنبيهات لك فوراً بمجرد فتح أي شعبة."
-                )
-            conn.close()
+        if row:
+            conn.execute("INSERT OR REPLACE INTO telegram_links (email, chat_id, link_token, created_at) VALUES (?, ?, ?, ?)",
+                         (row["email"], str(chat_id), row.get("link_token") or "DIRECT", datetime.now().isoformat()))
+            conn.commit()
+
+            # جلب تفاصيل كاملة للمواد والشعب المسجل فيها
+            subs = conn.execute("SELECT * FROM subscribers WHERE email=? AND active=1", (row["email"],)).fetchall()
+            
+            details_list = []
+            for s in subs:
+                cq = s["course_query"]
+                sq = s["section_query"]
+                col = s["college_query"]
+
+                # ابحث في course_state لجلب كامل بيانات المادة (الأوقات، المدرس، القاعة، الحالة)
+                c_info = conn.execute(
+                    "SELECT * FROM course_state WHERE (course_name LIKE ? OR course_no LIKE ?) AND (section_no=? OR ?='ALL' OR ?='') LIMIT 1",
+                    (f"%{cq}%", f"%{cq}%", sq, sq, sq)
+                ).fetchone()
+
+                if c_info:
+                    status_text = "🟢 متاحة" if str(c_info["status"]) == "1" else ("🔴 مغلقة" if str(c_info["status"]) == "3" else "⚪ ملغاة")
+                    times_fmt = _format_times_friendly(c_info["times"])
+                    item_text = (
+                        f"📚 <b>المادة:</b> {c_info['course_name']} (<code>{c_info['course_no']}</code>)\n"
+                        f"🔢 <b>الشعبة:</b> {c_info['section_no']}  |  <b>الحالة الحالية:</b> {status_text}\n"
+                        f"⏰ <b>المواعيد والأيام:</b> {times_fmt}\n"
+                        f"👨‍🏫 <b>المدرس:</b> {c_info['lecturers'] or 'غير محدد'}\n"
+                        f"🏛️ <b>الكلية:</b> {c_info['college_name'] or '—'} - {c_info['department_name'] or '—'}\n"
+                        f"🚪 <b>القاعة:</b> {c_info['rooms'] or 'غير محدد'}"
+                    )
+                else:
+                    item_text = f"📚 <b>المادة:</b> {cq}\n🔢 <b>الشعبة:</b> {sq or 'كافة الشعب'}\n🏛️ <b>الكلية:</b> {col or 'جميع الكليات'}"
+                
+                details_list.append(item_text)
+
+            courses_block = "\n\n────────────────\n\n".join(details_list) if details_list else "كافة المواد المحددة"
+
+            welcome_msg = (
+                f"أهلاً بك <b>{first_name}</b> في نظام مكانك لمراقبة جريدة المواد! 🎓\n\n"
+                f"✅ <b>تم تفعيل الإشعارات الفورية بنجاح عبر تلغرام!</b>\n\n"
+                f"📋 <b>تفاصيل المادة قيد المراقبة:</b>\n\n"
+                f"{courses_block}\n\n"
+                f"⚡ <b>سنرسل لك تنبيهاً فورياً في نفس الثانية التي تفتح فيها الشعبة أو يتاح التسجيل بها!</b>"
+            )
+            send_telegram_message(chat_id, welcome_msg)
+            log.info(f"✅ ربط تلغرام وتفاصيل كاملة مرسلة لـ {row['email']} chat_id={chat_id}")
         else:
             send_telegram_message(chat_id,
-                f"أهلاً بك <b>{first_name}</b> في بوت مكانك لمراقبة جريدة المواد 🎓\n\n"
-                f"لتفعيل تتبع مادة معينة، اختر المادة من موقع مكانك الجامعي واضغط زر <b>تفعيل الإشعار عبر تلغرام</b> ليتم ربط حسابك تلقائياً."
+                f"أهلاً بك <b>{first_name}</b> في بوت مكانك الجامعي 🎓\n\n"
+                f"لتفعيل تتبع مادة معينة بكامل تفاصيلها، افتح موقع مكانك الجامعي واضغط زر <b>تتبع</b> بجانب المادة المطلوبة ليتم ربطك تلقائياً."
             )
+        conn.close()
     else:
         send_telegram_message(chat_id,
             "هذا البوت مخصص لإرسال إشعارات فتح الشعب والمواد لحظة بلحظة ⚡\n"
