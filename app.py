@@ -39,6 +39,8 @@ import qrcode
 
 import collections
 import html
+import uuid
+import requests
 
 from flask import Flask, request, jsonify, render_template, Response, stream_with_context, session, redirect, url_for, send_file
 from functools import wraps
@@ -265,6 +267,13 @@ def init_db():
             course_name TEXT,
             notes TEXT,
             created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS telegram_links (
+            email TEXT PRIMARY KEY,
+            chat_id TEXT,
+            link_token TEXT UNIQUE,
+            created_at TEXT
         );
 
         CREATE INDEX IF NOT EXISTS idx_cs_status ON course_state(status);
@@ -602,8 +611,50 @@ def watcher_loop():
 # =========================================================================
 
 # =========================================================================
-# Email Notifications Engine
+# Telegram Notifications Engine
 # =========================================================================
+
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
+TELEGRAM_BOT_USERNAME = os.environ.get("TELEGRAM_BOT_USERNAME", "Makanak_BAUBot")
+
+def get_or_create_telegram_link(email):
+    email = email.lower().strip()
+    conn = get_db()
+    row = conn.execute("SELECT * FROM telegram_links WHERE email=?", (email,)).fetchone()
+    if row:
+        conn.close()
+        return dict(row)
+    token = str(uuid.uuid4())
+    conn.execute(
+        "INSERT INTO telegram_links(email, chat_id, link_token, created_at) VALUES(?,?,?,?)",
+        (email, None, token, datetime.now().isoformat())
+    )
+    conn.commit()
+    conn.close()
+    return {"email": email, "chat_id": None, "link_token": token}
+
+def telegram_connect_url(token):
+    return f"https://t.me/{TELEGRAM_BOT_USERNAME}?start={token}"
+
+def send_telegram_message(chat_id, text):
+    if not TELEGRAM_BOT_TOKEN:
+        return False
+    try:
+        resp = requests.post(f"{TELEGRAM_API_URL}/sendMessage", json={
+            "chat_id": chat_id, "text": text, "parse_mode": "HTML"
+        }, timeout=10)
+        return resp.ok
+    except Exception as e:
+        log.error(f"telegram send error: {e}")
+        return False
+
+def get_telegram_chat_id(email):
+    conn = get_db()
+    row = conn.execute("SELECT chat_id FROM telegram_links WHERE email=?", (email.lower().strip(),)).fetchone()
+    conn.close()
+    return row["chat_id"] if row and row["chat_id"] else None
+
 
 def get_smtp_config():
     """تسترجع إعدادات البريد الإلكتروني ديناميكياً وتزيل المسافات من كلمة المرور تلقائياً."""
@@ -618,17 +669,25 @@ def get_smtp_config():
     return host, port, user, pwd, sender
 
 def is_smtp_ready():
+    """Return True when either Brevo API or SMTP credentials are configured."""
+    brevo_key = os.environ.get("BREVO_API_KEY", "").strip()
+    if brevo_key:
+        return True
+
     host, port, user, pwd, sender = get_smtp_config()
     return bool(user and pwd and "your_email" not in user and "xxxx" not in pwd)
 
 def send_email_api(to_email, subject, html_content, plain_content=""):
     """
-    محرك إرسال بريد إلكتروني مجاني وسريع عبر HTTP API (Port 443) يتجاوز حظر المنافذ على Render 100%.
-    يدعم مفاتيح Brevo (Sendinblue) و Resend تلقائياً عند توفرها في بيئة Render.
+    محرك إرسال البريد عبر HTTP API (Port 443) لتجاوز حظر منافذ SMTP على Render.
+    يدعم Brevo و Resend و Infobip عند توفر المفاتيح في البيئة.
     """
     brevo_key = os.environ.get("BREVO_API_KEY", "").strip()
     resend_key = os.environ.get("RESEND_API_KEY", "").strip()
-    sender_user = os.environ.get("SMTP_USER", "makanak.bau.jo@gmail.com").strip() or "makanak.bau.jo@gmail.com"
+    infobip_key = os.environ.get("INFOBIP_API_KEY", "").strip()
+    infobip_base_url = os.environ.get("INFOBIP_BASE_URL", "").strip().rstrip("/")
+    infobip_sender = os.environ.get("INFOBIP_SENDER", "").strip()
+    sender_user = os.environ.get("SMTP_USER", os.environ.get("EMAIL_SENDER", "makanak.bau.jo@gmail.com")).strip() or "makanak.bau.jo@gmail.com"
     sender_name = os.environ.get("SENDER_NAME", "مكانك لمراقبة جريدة المواد - جامعة البلقاء").strip()
 
     # 1) Brevo (Sendinblue) API - 300 free emails/day over Port 443
@@ -639,7 +698,8 @@ def send_email_api(to_email, subject, html_content, plain_content=""):
                 "sender": {"name": sender_name, "email": sender_user},
                 "to": [{"email": to_email}],
                 "subject": subject,
-                "htmlContent": html_content
+                "htmlContent": html_content,
+                "textContent": plain_content or re.sub(r'<[^>]+>', '', html_content)
             }).encode('utf-8')
             req = urllib.request.Request(url, data=data, headers={
                 "api-key": brevo_key,
@@ -665,7 +725,8 @@ def send_email_api(to_email, subject, html_content, plain_content=""):
             }).encode('utf-8')
             req = urllib.request.Request(url, data=data, headers={
                 "Authorization": f"Bearer {resend_key}",
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "Accept": "application/json"
             })
             with urllib.request.urlopen(req, timeout=10) as resp:
                 if resp.status in (200, 201, 202):
@@ -673,6 +734,36 @@ def send_email_api(to_email, subject, html_content, plain_content=""):
                     return True, "تم الإرسال بنجاح عبر Resend HTTPS API (Port 443)"
         except Exception as er:
             log.warning(f"Resend API error for {to_email}: {er}")
+
+    # 3) Infobip API - Port 443, supported for Render deployments
+    if infobip_key and infobip_base_url:
+        try:
+            payload = {
+                "messages": [{
+                    "from": {"email": infobip_sender or sender_user},
+                    "to": [{"email": to_email, "name": to_email}],
+                    "subject": subject,
+                    "text": plain_content or re.sub(r'<[^>]+>', '', html_content),
+                    "html": html_content
+                }]
+            }
+            req = urllib.request.Request(
+                f"{infobip_base_url}/email/1/send",
+                data=json.dumps(payload).encode('utf-8'),
+                headers={
+                    "Authorization": f"App {infobip_key}",
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    "User-Agent": "BAU-Course-Watcher"
+                },
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                if resp.status in (200, 201, 202):
+                    log.info(f"✅ أُرسل البريد الإلكتروني بنجاح إلى {to_email} عبر Infobip HTTPS API (Port 443).")
+                    return True, "تم الإرسال بنجاح عبر Infobip HTTPS API (Port 443)"
+        except Exception as ei:
+            log.warning(f"Infobip API error for {to_email}: {ei}")
 
     return False, None
 
@@ -786,7 +877,12 @@ def notify_subscribers_batch(changes):
                 section_match = (sq == ch_sec)
 
             if college_match and course_match and section_match:
-                ok, _ = _send_email(sub["name"], sub["email"], ch, sub_id=sub["id"])
+                chat_id = get_telegram_chat_id(sub["email"])
+                if chat_id:
+                    tg_text = f"📢 {ch['course_name']} - شعبة {ch['section_no']}\n{ch.get('change_type', '')}"
+                    ok = send_telegram_message(chat_id, tg_text)
+                else:
+                    ok, _ = _send_email(sub["name"], sub["email"], ch, sub_id=sub["id"])
                 if ok:
                     conn.execute("""
                         INSERT INTO notifications_log (subscriber_id, email, course_key, change_type, sent_at)
@@ -1165,6 +1261,34 @@ def unsubscribe_page():
     return render_template("unsubscribed.html", success=True, message=f"تم إلغاء الاشتراك وحذفه بنجاح للطالب ({sub['name']}) للمادة [{sub['course_query']}].")
 
 # =========================================================================
+# Telegram Webhook
+# =========================================================================
+
+@app.route("/telegram/webhook", methods=["POST"])
+def telegram_webhook():
+    data = request.get_json(silent=True) or {}
+    message = data.get("message", {})
+    text = (message.get("text") or "").strip()
+    chat_id = message.get("chat", {}).get("id")
+
+    if text.startswith("/start") and chat_id:
+        parts = text.split(" ")
+        if len(parts) > 1:
+            token = parts[1].strip()
+            conn = get_db()
+            row = conn.execute("SELECT * FROM telegram_links WHERE link_token=?", (token,)).fetchone()
+            if row:
+                conn.execute("UPDATE telegram_links SET chat_id=? WHERE link_token=?", (str(chat_id), token))
+                conn.commit()
+                send_telegram_message(chat_id, "تم تفعيل الإشعارات الفورية بنجاح ✅\nراح توصلك كل التحديثات على المواد اللي تتابعها فوراً هون.")
+            else:
+                send_telegram_message(chat_id, "الرابط غير صالح أو منتهي، جرب ترجع للموقع وتفعّل من جديد.")
+            conn.close()
+        else:
+            send_telegram_message(chat_id, "أهلاً فيك! لازم تفتح البوت من رابط التفعيل الموجود بموقع مكانك الجامعي.")
+    return "OK", 200
+
+# =========================================================================
 # Student Auth API (Google Sign-In & Guest)
 # =========================================================================
 
@@ -1220,13 +1344,24 @@ def api_my_subscriptions():
     user = session.get("user")
     email = user.get("email") if user else request.args.get("email", "").strip()
     if not email:
-        return jsonify(success=True, subscribers=[], requests=[])
+        return jsonify(success=True, subscribers=[], requests=[], telegram_connected=False, telegram_connect_url=None)
 
     conn = get_db()
     subs = [dict(r) for r in conn.execute("SELECT * FROM subscribers WHERE email=? ORDER BY id DESC", (email,)).fetchall()]
     reqs = [dict(r) for r in conn.execute("SELECT * FROM course_requests WHERE email=? ORDER BY id DESC", (email,)).fetchall()]
     conn.close()
-    return jsonify(success=True, subscribers=subs, requests=reqs)
+
+    link = get_or_create_telegram_link(email)
+    is_tg_connected = bool(link.get("chat_id"))
+    tg_url = telegram_connect_url(link["link_token"]) if not is_tg_connected else None
+
+    return jsonify(
+        success=True,
+        subscribers=subs,
+        requests=reqs,
+        telegram_connected=is_tg_connected,
+        telegram_connect_url=tg_url
+    )
 
 @app.route("/api/my-subscriptions/toggle/<int:sid>", methods=["POST"])
 def api_my_toggle_sub(sid):
@@ -1306,7 +1441,9 @@ def api_subscribe():
     _send_welcome_email(name, email, col_q, cq)
 
     target_desc = f"كليات [{col_q}]" if col_q != "ALL" else f"مادة [{cq}]"
-    return jsonify(success=True, message=f"تم تفعيل الإشعار الفوري بنجاح لـ {target_desc}! تحقق من بريدك الإلكتروني.")
+    link = get_or_create_telegram_link(email)
+    tg_url = telegram_connect_url(link["link_token"]) if not link["chat_id"] else None
+    return jsonify(success=True, message=f"تم تفعيل الإشعار الفوري بنجاح لـ {target_desc}! تحقق من بريدك الإلكتروني.", telegram_connect_url=tg_url)
 
 @app.route("/api/subscribers")
 @admin_api_required
@@ -1454,9 +1591,12 @@ def api_quick_track():
 
     sse_broadcast("stats_update", _get_stats())
 
+    link = get_or_create_telegram_link(email)
+    tg_url = telegram_connect_url(link["link_token"]) if not link["chat_id"] else None
     return jsonify(
         success=True,
-        message=f"تم تفعيل تتبع مادة ({course_name or course_no} - شعبة {section_no or 'الكل'}) بنجاح وإرسال رسالة تأكيد إلى بريدك ({email})."
+        message=f"تم تفعيل تتبع مادة ({course_name or course_no} - شعبة {section_no or 'الكل'}) بنجاح وإرسال رسالة تأكيد إلى بريدك ({email}).",
+        telegram_connect_url=tg_url
     )
 
 @app.route("/api/colleges")
@@ -1623,7 +1763,9 @@ def api_course_request():
     # أرسل تأكيد طلب للطالب
     _send_course_request_email(name, email, course_no, course_name, notes)
 
-    return jsonify(success=True, message=f"تم استلام طلبك بنجاح للمادة [{course_no}]. ستصلك رسالة تأكيد على بريدك الإلكتروني.")
+    link = get_or_create_telegram_link(email)
+    tg_url = telegram_connect_url(link["link_token"]) if not link["chat_id"] else None
+    return jsonify(success=True, message=f"تم استلام طلبك بنجاح للمادة [{course_no}]. ستصلك رسالة تأكيد على بريدك الإلكتروني.", telegram_connect_url=tg_url)
 
 
 def _send_course_request_email(student_name, to_email, course_no, course_name, notes):
@@ -1703,22 +1845,67 @@ def api_course_requests():
     return jsonify(success=True, requests=rows)
 
 
+# =========================================================================
+# Health Check & Keep-Alive (Prevent Render Cold Starts)
+# =========================================================================
+
+@app.route("/health")
+def health_check():
+    """Endpoint used by keep-alive pinger to prevent Render cold starts."""
+    return jsonify(status="ok", service="BAU Course Watcher", timestamp=datetime.now().isoformat()), 200
+
+
+def keep_alive_loop():
+    """
+    Background thread that pings the app's own /health endpoint every 10 minutes.
+    This prevents Render's free tier from putting the service to sleep.
+    """
+    # Wait 60 seconds after startup before first ping (let the server fully boot)
+    time.sleep(60)
+    # Determine the public URL to self-ping
+    self_url = os.environ.get("RENDER_EXTERNAL_URL", "").strip()
+    if not self_url:
+        # Try to build from PORT if running locally (no-op locally since we're not on Render)
+        port = int(os.environ.get("PORT", 5050))
+        self_url = f"http://127.0.0.1:{port}"
+    ping_url = f"{self_url.rstrip('/')}/health"
+    log.info(f"[KeepAlive] سيتم إرسال ping كل 10 دقائق إلى: {ping_url}")
+
+    while True:
+        try:
+            resp = requests.get(ping_url, timeout=15)
+            log.info(f"[KeepAlive] ping ✓ ({resp.status_code}) — السيرفر يعمل بشكل طبيعي")
+        except Exception as e:
+            log.warning(f"[KeepAlive] ping ✗ — {e}")
+        # Sleep 10 minutes (600s) — well within Render's 15-min inactivity window
+        time.sleep(600)
+
+
 def start():
     init_db()
-    # Check if thread already started to prevent duplicates
+    # Check if watcher thread already started to prevent duplicates
     for tr in threading.enumerate():
         if tr.name == "BauWatcher" and tr.is_alive():
             log.info("خيط المراقبة المستمرة يعمل بالفعل.")
             return
+
+    # Start main course-watcher loop
     t = threading.Thread(target=watcher_loop, daemon=True, name="BauWatcher")
     t.start()
     log.info("خيط المراقبة المستمرة بدأ بنجاح.")
 
-# Start DB init and background watcher loop on WSGI/Gunicorn load
+    # Start keep-alive pinger (only meaningful on Render/production)
+    ka = threading.Thread(target=keep_alive_loop, daemon=True, name="KeepAlive")
+    ka.start()
+    log.info("خيط KeepAlive بدأ — السيرفر لن ينام.")
+
+
+# Start DB init and background threads on WSGI/Gunicorn load
 start()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5050))
     log.info(f"الواجهة على: http://127.0.0.1:{port}")
     app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
+
 
