@@ -1035,18 +1035,15 @@ function markCourseAsTracked(cNo, secNo) {
 }
 
 async function handleQuickTrack(cNo, cName, secNo, colName) {
-  if (currentUser && currentUser.email) {
-    executeQuickTrack(currentUser.name, currentUser.email, cNo, cName, secNo, colName);
-  } else {
-    openAuthModal();
-    showToast(`يرجى تزويد بريدك الإلكتروني لتفعيل تتبع مادة (${cName}) شعبة (${secNo})`, 'info');
-  }
+  const name = currentUser ? currentUser.name : 'طالب';
+  const email = currentUser ? currentUser.email : '';
+  executeQuickTrack(name, email, cNo, cName, secNo, colName);
 }
 
 async function executeQuickTrack(name, email, cNo, cName, secNo, colName) {
   const body = {
     name: name || 'طالب',
-    email: email,
+    email: email || '',
     course_no: cNo,
     course_name: cName,
     section_no: secNo,
@@ -1065,7 +1062,11 @@ async function executeQuickTrack(name, email, cNo, cName, secNo, colName) {
       showToast(data.message, 'success');
       loadCourses();
       if (currentUser) loadMySubscriptions();
-      if (data.telegram_connect_url) showTelegramBanner(data.telegram_connect_url);
+      if (data.telegram_connect_url) {
+        showTelegramBanner(data.telegram_connect_url);
+        // فتح البوت فوراً في تاب جديد ليتم الربط التلقائي وإرسال تفاصيل المادة كاملة
+        window.open(data.telegram_connect_url, '_blank');
+      }
     } else {
       showToast(data.error || 'حدث خطأ أثناء التتبع', 'error');
     }

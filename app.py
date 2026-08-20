@@ -1487,7 +1487,7 @@ def send_email_async(to_email, subject, plain_body, html_body=None):
 
 @app.route("/api/quick-track", methods=["POST"])
 def api_quick_track():
-    if is_rate_limited("quick_track", limit=15, window=60):
+    if is_rate_limited("quick_track", limit=30, window=60):
         return jsonify(success=False, error="تجاوزت حد المحاولات المسموح به، يرجى الانتظار دقيقة واحدة."), 429
 
     data = request.get_json(silent=True) or request.form
@@ -1498,14 +1498,14 @@ def api_quick_track():
     section_no = clean_input(data.get("section_no", ""))
     college_name = clean_input(data.get("college_name", ""))
 
-    if not email or "@" not in email or "." not in email:
-        return jsonify(success=False, error="يرجى إدخال بريد إلكتروني صحيح لتلقي الإشعارات."), 400
-
     if not course_no and not course_name:
         return jsonify(success=False, error="يرجى تحديد المادة المراد تتبعها."), 400
 
+    if not email:
+        email = f"tg_{uuid.uuid4().hex[:10]}@makanak.jo"
+
     conn = get_db()
-    c_query = course_no or course_name
+    c_query = course_name or course_no
     s_query = section_no or "ALL"
 
     existing = conn.execute(
