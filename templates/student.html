@@ -466,48 +466,45 @@
   </div>
 
   <!-- بطاقة الاشتراك الإشعاري عبر تلغرام -->
-  <div class="sub-card" style="border: 1.5px solid #bae6fd; background: linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%);">
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
-      <h2 style="margin:0; color:#0369a1;"><i class="fa-brands fa-telegram" style="color:#0284c7;"></i> اشترك لتصلك الإشعارات الفورية عبر بوت تلغرام 🚀</h2>
-      <span style="background:#e0f2fe; color:#0369a1; font-weight:800; font-size:.8rem; padding:4px 12px; border-radius:50px; border:1px solid #7dd3fc;">
-        ⚡ إشعارات فورية مباشرة
+  <div class="sub-card" style="border: 1.5px solid #7dd3fc; background: linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%); box-shadow: 0 10px 30px rgba(2, 132, 199, 0.08);">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+      <h2 style="margin:0; color:#0369a1; font-size:1.25rem;"><i class="fa-brands fa-telegram" style="color:#0284c7; font-size:1.45rem;"></i> اشترك لتصلك الإشعارات الفورية عبر بوت تلغرام 🚀</h2>
+      <span style="background:#e0f2fe; color:#0369a1; font-weight:800; font-size:.82rem; padding:5px 14px; border-radius:50px; border:1px solid #7dd3fc;">
+        ⚡ تنبيه فوري بالثواني
       </span>
     </div>
-    <p style="color:#475569; font-size:.9rem; margin: -4px 0 16px; line-height:1.6;">
-      أدخل بريدك الإلكتروني وسيتم ربطه تلقائياً مع <strong>بوت تلغرام</strong> لتصلك التنبيهات على هاتفك في نفس الثانية التي تفتح فيها الشعبة!
+    <p style="color:#475569; font-size:.92rem; margin: -2px 0 16px; line-height:1.6;">
+      اختر كليتك أو مادتك واضغط <strong>تفعيل عبر تلغرام</strong> وسيتم نقلك مباشرة إلى البوت لتلقي إشعار فور فتح الشعبة!
     </p>
 
     <form id="subForm" onsubmit="submitSub(event)">
+      <input type="hidden" name="email" id="subEmailInp">
       <div class="form-row">
         <div class="fg">
-          <label>الاسم الكامل *</label>
-          <input name="name" id="subNameInp" type="text" placeholder="مثال: أحمد محمد" required>
+          <label>الاسم (اختياري)</label>
+          <input name="name" id="subNameInp" type="text" placeholder="مثال: أحمد محمد">
         </div>
         <div class="fg">
-          <label>البريد الإلكتروني (المفتاح للربط مع البوت) *</label>
-          <input name="email" id="subEmailInp" type="email" placeholder="مثال: student@example.com" required>
-        </div>
-      </div>
-      <div class="fg" style="margin-top:8px;">
-        <label>الكليات التي تهمك *</label>
-        <div class="multi-college-box">
-          <button type="button" class="college-select-btn" id="sCollegeBtn" onclick="toggleCollegeDropdown()">
-            <span id="sCollegeBtnText">اختر الكليات...</span>
-            <i class="fa-solid fa-chevron-down" style="font-size:.75rem; color:#6b7280;"></i>
-          </button>
-          <div class="college-dropdown" id="sCollegeDrop">
-            <label class="college-checkbox-item all-item">
-              <input type="checkbox" id="sChkAll" onchange="toggleAllColleges()">
-              <span>جميع الكليات</span>
-            </label>
+          <label>الكليات التي تهمك *</label>
+          <div class="multi-college-box">
+            <button type="button" class="college-select-btn" id="sCollegeBtn" onclick="toggleCollegeDropdown()">
+              <span id="sCollegeBtnText">اختر الكليات...</span>
+              <i class="fa-solid fa-chevron-down" style="font-size:.75rem; color:#6b7280;"></i>
+            </button>
+            <div class="college-dropdown" id="sCollegeDrop">
+              <label class="college-checkbox-item all-item">
+                <input type="checkbox" id="sChkAll" onchange="toggleAllColleges()">
+                <span>جميع الكليات</span>
+              </label>
+            </div>
           </div>
         </div>
       </div>
       <div class="form-row" style="margin-top:8px;">
         <div class="fg">
-          <label>اسم المادة (اختياري)</label>
+          <label>اسم المادة أو رمزها (اختياري)</label>
           <div class="ac-wrap">
-            <input name="course_query" id="sCourseQ" type="text" placeholder="اكتب اسم المادة أو رمزها..." autocomplete="off" oninput="onCourseInput(this)">
+            <input name="course_query" id="sCourseQ" type="text" placeholder="مثال: هيكلة البيانات أو CS201..." autocomplete="off" oninput="onCourseInput(this)">
             <div class="ac-drop hidden" id="sAcDrop"></div>
           </div>
           <small style="color:#6b7280; font-size:.78rem;">اتركها فارغة لتلقي إشعارات كافة مواد الكليات المحددة</small>
@@ -517,9 +514,9 @@
           <input name="section_query" type="text" placeholder="مثال: 1 أو 2">
         </div>
       </div>
-      <button type="submit" class="btn-subscribe" style="background:linear-gradient(135deg, #0284c7, #0369a1); box-shadow: 0 4px 15px rgba(2, 132, 199, 0.3);">
-        <i class="fa-brands fa-telegram"></i>
-        تفعيل الإشعار الفوري عبر تلغرام
+      <button type="submit" class="btn-subscribe" style="background:linear-gradient(135deg, #0284c7, #0369a1); box-shadow: 0 6px 20px rgba(2, 132, 199, 0.35); font-size:1.02rem; padding:14px;">
+        <i class="fa-brands fa-telegram" style="font-size:1.2rem;"></i>
+        تفعيل الإشعار الفوري عبر بوت تلغرام ✈️
       </button>
     </form>
   </div>
@@ -933,8 +930,8 @@ async function submitSub(e) {
   const fd   = new FormData(e.target);
   const cols = getSelectedColleges();
   const body = {
-    name: fd.get('name'),
-    email: fd.get('email'),
+    name: fd.get('name') || (currentUser ? currentUser.name : 'طالب'),
+    email: fd.get('email') || (currentUser ? currentUser.email : ''),
     college_query: cols.length ? cols : 'ALL',
     course_query: fd.get('course_query'),
     section_query: fd.get('section_query'),
@@ -945,7 +942,11 @@ async function submitSub(e) {
   if (data.success) {
     e.target.reset();
     if (currentUser) loadMySubscriptions();
-    if (data.telegram_connect_url) showTelegramBanner(data.telegram_connect_url);
+    if (data.telegram_connect_url) {
+      showTelegramBanner(data.telegram_connect_url);
+      // فتح البوت فوراً في تاب جديد لتجربة سلسة وسريعة
+      window.open(data.telegram_connect_url, '_blank');
+    }
   }
 }
 

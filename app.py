@@ -1355,7 +1355,7 @@ def api_status():
 @app.route("/api/subscribe", methods=["POST"])
 def api_subscribe():
     d = request.get_json() or request.form
-    name = (d.get("name") or "").strip()
+    name = (d.get("name") or "طالب").strip()
     email = (d.get("email") or "").strip()
     phone = (d.get("phone") or "").strip()
 
@@ -1371,14 +1371,15 @@ def api_subscribe():
     cq = (d.get("course_query") or "").strip()
     sq = (d.get("section_query") or "").strip()
 
-    if not name or not email:
-        return jsonify(success=False, message="الاسم والبريد الإلكتروني حقول مطلوبة."), 400
-
     if not cq and col_q == "ALL":
         return jsonify(success=False, message="يرجى تحديد كليات اهتمامك أو كتابة اسم المادة المطلوبة."), 400
 
     if not cq:
         cq = "جميع المواد"
+
+    # لو لم يدخل إيميل، ولد له معرف تتبع تلقائي خاص به
+    if not email:
+        email = f"tg_{uuid.uuid4().hex[:10]}@makanak.jo"
 
     conn = get_db()
     conn.execute(
@@ -1389,13 +1390,14 @@ def api_subscribe():
     conn.close()
     sse_broadcast("stats_update", _get_stats())
 
-    # أرسل رسالة ترحيب فورية
-    _send_welcome_email(name, email, col_q, cq)
-
     target_desc = f"كليات [{col_q}]" if col_q != "ALL" else f"مادة [{cq}]"
     link = get_or_create_telegram_link(email)
-    tg_url = telegram_connect_url(link["link_token"]) if not link["chat_id"] else None
-    return jsonify(success=True, message=f"تم تفعيل الإشعار الفوري بنجاح لـ {target_desc}! تحقق من بريدك الإلكتروني.", telegram_connect_url=tg_url)
+    tg_url = telegram_connect_url(link["link_token"])
+    return jsonify(
+        success=True, 
+        message=f"تم حفظ طلب تتبع {target_desc}! اضغط زر تلغرام لتصلك الإشعارات فوراً ⚡", 
+        telegram_connect_url=tg_url
+    )
 
 @app.route("/api/subscribers")
 @admin_api_required
