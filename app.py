@@ -812,13 +812,25 @@ def notify_subscribers_batch(changes):
     now = datetime.now().isoformat()
 
     for ch in changes:
-        if ch["change_type"] not in ("BECAME_OPEN", "NEW_SECTION", "TIMES_CHANGED"):
+        ch_type = ch.get("change_type", "")
+        if not ch_type:
             continue
 
         ch_college = (ch.get("college_name") or "").strip()
         ch_name = (ch.get("course_name") or "").strip().lower()
         ch_no = (ch.get("course_no") or "").strip().lower()
         ch_sec = (ch.get("section_no") or "").strip()
+
+        # نص توضيحي لطبيعة التغيير
+        type_titles = {
+            "BECAME_OPEN": "🟢 فُتحت الشعبة وأصبحت متاحة للتسجيل!",
+            "BECAME_CLOSED": "🔴 أُغلقت الشعبة (اكتمل العدد)",
+            "NEW_SECTION": "✨ طرح مادة / شعبة جديدة في الجريدة!",
+            "TIMES_CHANGED": "⏰ تعديل في مواعيد وأيام الشعبة",
+            "ROOM_CHANGED": "🚪 تعديل في قاعة المحاضرة",
+            "LECTURER_CHANGED": "👨‍🏫 تعديل في مدرس المادة"
+        }
+        change_title = type_titles.get(ch_type, "📢 تحديث في جريدة المواد")
 
         for sub in subs:
             sub_dict = dict(sub)
@@ -850,11 +862,29 @@ def notify_subscribers_batch(changes):
 
             if college_match and course_match and section_match:
                 chat_id = get_telegram_chat_id(sub["email"])
+                
+                # إرسال إشعار تلغرام مفصل وشامل
                 if chat_id:
-                    tg_text = f"📢 {ch['course_name']} - شعبة {ch['section_no']}\n{ch.get('change_type', '')}"
+                    formatted_t = format_time_12h(ch.get('times'))
+                    tg_text = (
+                        f"📢 <b>{change_title}</b>\n\n"
+                        f"📚 <b>المادة:</b> {ch['course_name']} (<code>{ch.get('course_no','')}</code>)\n"
+                        f"🔢 <b>الشعبة:</b> {ch['section_no']}\n"
+                        f"⏰ <b>المواعيد:</b> {formatted_t}\n"
+                        f"👨‍🏫 <b>المدرس:</b> {ch.get('lecturers') or 'غير محدد'}\n"
+                        f"🏛️ <b>الكلية:</b> {ch.get('college_name') or 'جامعة البلقاء'}\n"
+                        f"🚪 <b>القاعة:</b> {ch.get('rooms') or 'غير محدد'}\n\n"
+                        f"🔗 <a href='https://www.bau.edu.jo/Services/Reg.aspx'>اضغط هنا للانتقال لبوابة التسجيل فوراً</a>"
+                    )
                     ok = send_telegram_message(chat_id, tg_text)
                 else:
-                    ok, _ = _send_email(sub["name"], sub["email"], ch, sub_id=sub["id"])
+                    ok = False
+
+                # إرسال إشعار الإيميل دائماً للبريد الحقيقي
+                if "@" in sub["email"] and not sub["email"].startswith("tg_"):
+                    ok_email, _ = _send_email(sub["name"], sub["email"], ch, sub_id=sub["id"])
+                    ok = ok or ok_email
+
                 if ok:
                     conn.execute("""
                         INSERT INTO notifications_log (subscriber_id, email, course_key, change_type, sent_at)
@@ -1749,9 +1779,14 @@ def _send_welcome_email(student_name, to_email, col_q, course_q):
       </div>
       <div class="body">
         <p>مرحباً <strong>{student_name}</strong>،</p>
-        <p>تم تفعيل اشتراكك بنجاح في نظام <strong>مكانك لمراقبة جريدة المواد</strong>. سيصلك إشعار فوري على هذا البريد بمجرد فتح أي مادة أو شعبة جديدة تهمك في الجريدة الرسمية لجامعة البلقاء التطبيقية.</p>
+        <p>تم تفعيل اشتراكك بنجاح في نظام <strong>مكانك لمراقبة جريدة المواد</strong>. سيصلك إشعار فوري على هذا البريد بمجرد فتح أي مادة أو شعبة جديدة تهمك أو حدوث أي تغيير في الجريدة الرسمية لجامعة البلقاء التطبيقية.</p>
         {interest_html}
-        <p style="margin-top:20px;">في حال أردت تغيير اشتراكك أو إلغاؤه، تواصل مع إدارة النظام.</p>
+        <div style="background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:12px; padding:16px; margin:20px 0; font-size:.9rem; color:#334155; line-height:1.7;">
+          <strong style="color:#0f172a; display:block; margin-bottom:6px;">📌 لإدارة أو إلغاء اشتراكاتك:</strong>
+          • يمكنك النقر على <strong>حسابك في أعلى نظام مكانك</strong> وإلغاء أو إدارة كافة اشتراكاتك السابقة بسهولة.<br>
+          • أو التواصل مع إدارة النظام عبر الهاتف: <strong style="color:#059669; direction:ltr; display:inline-block; font-size:1rem;">0682934685</strong><br>
+          • أو الرد مباشرة على هذه الرسالة.
+        </div>
         <a href="https://www.bau.edu.jo/Services/Reg.aspx" target="_blank" class="btn">اذهب لبوابة التسجيل الرسمية</a>
       </div>
       <div class="footer">مكانك لمراقبة جريدة المواد — جامعة البلقاء التطبيقية &copy; 2026</div>
