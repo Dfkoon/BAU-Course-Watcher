@@ -460,14 +460,23 @@
   </div>
 
   <!-- بطاقة اشتراكاتي (تظهر عند الضغط أو التسجيل) -->
-  <div class="sub-card" id="mySubsCard" style="display:none; background:#ecfdf5; border-color:#a7f3d0;">
+  <div class="sub-card" id="mySubsCard" style="display:none; background:#f0fdf4; border-color:#86efac; box-shadow: 0 10px 25px rgba(5,150,105,0.08);">
     <h2><i class="fa-solid fa-list-check"></i> اشتراكاتي الحالية وإدارتها</h2>
     <div id="mySubsContent">جاري تحميل بيانات اشتراكاتك...</div>
   </div>
 
-  <!-- بطاقة الاشتراك الإشعاري -->
-  <div class="sub-card">
-    <h2><i class="fa-solid fa-bell"></i> اشترك لتصلك الإشعارات الفورية</h2>
+  <!-- بطاقة الاشتراك الإشعاري عبر تلغرام -->
+  <div class="sub-card" style="border: 1.5px solid #bae6fd; background: linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%);">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+      <h2 style="margin:0; color:#0369a1;"><i class="fa-brands fa-telegram" style="color:#0284c7;"></i> اشترك لتصلك الإشعارات الفورية عبر بوت تلغرام 🚀</h2>
+      <span style="background:#e0f2fe; color:#0369a1; font-weight:800; font-size:.8rem; padding:4px 12px; border-radius:50px; border:1px solid #7dd3fc;">
+        ⚡ إشعارات فورية مباشرة
+      </span>
+    </div>
+    <p style="color:#475569; font-size:.9rem; margin: -4px 0 16px; line-height:1.6;">
+      أدخل بريدك الإلكتروني وسيتم ربطه تلقائياً مع <strong>بوت تلغرام</strong> لتصلك التنبيهات على هاتفك في نفس الثانية التي تفتح فيها الشعبة!
+    </p>
+
     <form id="subForm" onsubmit="submitSub(event)">
       <div class="form-row">
         <div class="fg">
@@ -475,7 +484,7 @@
           <input name="name" id="subNameInp" type="text" placeholder="مثال: أحمد محمد" required>
         </div>
         <div class="fg">
-          <label>البريد الإلكتروني *</label>
+          <label>البريد الإلكتروني (المفتاح للربط مع البوت) *</label>
           <input name="email" id="subEmailInp" type="email" placeholder="مثال: student@example.com" required>
         </div>
       </div>
@@ -508,9 +517,9 @@
           <input name="section_query" type="text" placeholder="مثال: 1 أو 2">
         </div>
       </div>
-      <button type="submit" class="btn-subscribe">
-        <i class="fa-solid fa-paper-plane"></i>
-        تفعيل الإشعار الفوري
+      <button type="submit" class="btn-subscribe" style="background:linear-gradient(135deg, #0284c7, #0369a1); box-shadow: 0 4px 15px rgba(2, 132, 199, 0.3);">
+        <i class="fa-brands fa-telegram"></i>
+        تفعيل الإشعار الفوري عبر تلغرام
       </button>
     </form>
   </div>
@@ -518,7 +527,7 @@
   <!-- نموذج طلب إشعاري فور إتاحة مادة للتسجيل -->
   <div class="sub-card">
     <h2><i class="fa-solid fa-bell-concierge"></i> إشعاري فور إتاحة مادة للتسجيل</h2>
-    <p style="color:#6b7280; font-size:.88rem; margin: -10px 0 18px;">اكتب رمز واسم المادة لتصلك إشعارات فورية عبر الإيميل فور إتاحتها للتسجيل مع توضيح كامل للوقت والأيام.</p>
+    <p style="color:#6b7280; font-size:.88rem; margin: -10px 0 18px;">اكتب رمز واسم المادة لتصلك إشعارات فورية عبر تلغرام والإيميل فور إتاحتها للتسجيل مع توضيح كامل للوقت والأيام.</p>
 
     <div style="background:#fefce8; border:1px solid #fde68a; border-radius:10px; padding:12px 16px; margin-bottom:18px; font-size:.85rem; color:#92400e; display:flex; gap:10px; align-items:flex-start;">
       <i class="fa-solid fa-triangle-exclamation" style="margin-top:2px; flex-shrink:0;"></i>
@@ -551,9 +560,9 @@
         <label>ملاحظات إضافية (اختياري)</label>
         <textarea name="notes" rows="3" placeholder="مثال: أفضّل الشعب الصباحية — أي معلومات إضافية..." style="padding:11px 14px; border:1.5px solid #d1fae5; border-radius:10px; background:#f0fdf4; font-family:'Cairo',sans-serif; font-size:.95rem; color:#111; outline:none; resize:vertical; width:100%; box-sizing:border-box;"></textarea>
       </div>
-      <button type="submit" class="btn-subscribe" style="background:linear-gradient(135deg,#0369a1,#0ea5e9);">
+      <button type="submit" class="btn-subscribe" style="background:linear-gradient(135deg,#059669,#10b981);">
         <i class="fa-solid fa-paper-plane"></i>
-        إرسال الطلب
+        إرسال الطلب ومتابعة التحديثات
       </button>
     </form>
   </div>
@@ -619,13 +628,13 @@
         </svg>
         الدخول بحساب Google
       </h3>
-      <p style="font-size:.88rem; color:#6b7280; margin-bottom:16px;">أدخل بريد Google الخاص بك كطالب لتلقي الإشعارات وإدارة اشتراكاتك فوراً:</p>
+      <p style="font-size:.88rem; color:#6b7280; margin-bottom:16px;">أدخل حساب Google لربطه مع <strong>بوت تلغرام</strong> وإدارة تتبع المواد فوراً:</p>
       <div class="fg">
         <label>اسم الطالب *</label>
         <input id="gStudentName" type="text" placeholder="مثال: أحمد محمد">
       </div>
       <div class="fg" style="margin-top:8px;">
-        <label>إيميل Google *</label>
+        <label>إيميل Google (مفتاح الربط مع البوت) *</label>
         <input id="gStudentEmail" type="email" placeholder="student@gmail.com">
       </div>
       <button class="btn-subscribe" style="margin-top:16px; background:#2563eb;" onclick="submitStudentGoogleLogin()">
@@ -636,19 +645,24 @@
 
     <!-- Guest View -->
     <div id="modalGuestView" style="display:none; padding:10px;">
-      <h3 style="margin:0 0 16px; color:#064e3b;"><i class="fa-solid fa-user"></i> دخول ضيف</h3>
-      <p style="font-size:.88rem; color:#6b7280; margin-bottom:16px;">الدخول كضيف يتيح لك الاشتراك والتصفح بحرية دون الحاجة لحساب دائم:</p>
+      <h3 style="margin:0 0 12px; color:#0369a1; display:flex; align-items:center; gap:8px;">
+        <i class="fa-brands fa-telegram" style="color:#0284c7; font-size:1.4rem;"></i>
+        تفعيل الإشعارات الفورية عبر تلغرام
+      </h3>
+      <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:10px; padding:10px 14px; font-size:.85rem; color:#0369a1; margin-bottom:14px; line-height:1.5;">
+        ⚡ <strong>إشعارات في نفس الثانية:</strong> أدخل بريدك الإلكتروني وسيتم فتح بوت تلغرام لربطه وتلقي تنبيهات فتح الشعب مباشرة على هاتفك!
+      </div>
       <div class="fg">
-        <label>الاسم الفضيلي (اختياري)</label>
-        <input id="mGuestName" type="text" placeholder="زائر">
+        <label>اسمك (اختياري)</label>
+        <input id="mGuestName" type="text" placeholder="مثال: أحمد">
       </div>
       <div class="fg" style="margin-top:8px;">
-        <label>البريد الإلكتروني (لتلقي الإشعارات)</label>
-        <input id="mGuestEmail" type="email" placeholder="student@example.com">
+        <label>البريد الإلكتروني (المفتاح للربط مع البوت) *</label>
+        <input id="mGuestEmail" type="email" placeholder="student@example.com" required>
       </div>
-      <button class="btn-subscribe" style="margin-top:16px; background:#4b5563;" onclick="doGuestLogin()">
-        <i class="fa-solid fa-user"></i>
-        متابعة كضيف
+      <button class="btn-subscribe" style="margin-top:16px; background:linear-gradient(135deg, #0284c7, #0369a1); box-shadow:0 4px 14px rgba(2,132,199,0.3);" onclick="doGuestLogin()">
+        <i class="fa-brands fa-telegram"></i>
+        متابعة وتفعيل بوت تلغرام
       </button>
     </div>
   </div>
@@ -767,12 +781,37 @@ async function loadMySubscriptions() {
   const data = await res.json();
   const box = document.getElementById('mySubsContent');
 
+  let html = '';
+
+  // Telegram Integration Status Box
+  const isTgConnected = data.telegram_connected;
+  html += `
+    <div style="background: ${isTgConnected ? '#ecfdf5' : '#eff6ff'}; border: 1.5px solid ${isTgConnected ? '#a7f3d0' : '#bfdbfe'}; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:1.6rem;">${isTgConnected ? '✅' : '✈️'}</span>
+        <div>
+          <strong style="color: ${isTgConnected ? '#065f46' : '#1e40af'}; font-size:.95rem; display:block;">
+            ${isTgConnected ? 'حسابك مربوط ببوت تلغرام (الإشعارات الفورية مفعلة)' : 'حسابك غير مربوط ببوت تلغرام حتى الآن'}
+          </strong>
+          <small style="color: ${isTgConnected ? '#047857' : '#3b82f6'}; font-size:.82rem;">
+            ${isTgConnected ? 'تصلك الإشعارات في نفس الثانية على تطبيق تلغرام' : 'اربط حسابك لتصلك إشعارات فتح الشعب لحظياً على هاتفك'}
+          </small>
+        </div>
+      </div>
+      ${!isTgConnected && data.telegram_connect_url ? `
+        <a href="${data.telegram_connect_url}" target="_blank" style="background:#0284c7; color:#fff; padding:8px 16px; border-radius:8px; font-weight:700; text-decoration:none; font-size:.85rem; display:inline-flex; align-items:center; gap:6px;">
+          <i class="fa-brands fa-telegram"></i> ربط وتفعيل بوت تلغرام
+        </a>
+      ` : ''}
+    </div>
+  `;
+
   if (!data.subscribers.length && !data.requests.length) {
-    box.innerHTML = '<p style="color:#6b7280; font-size:.9rem; text-align:center; margin:10px 0;">لا توجد لديك أي اشتراكات حالية.</p>';
+    html += '<p style="color:#6b7280; font-size:.9rem; text-align:center; margin:10px 0;">لا توجد لديك أي اشتراكات حالية.</p>';
+    box.innerHTML = html;
     return;
   }
 
-  let html = '';
   if (data.subscribers.length) {
     html += '<h4 style="margin:0 0 10px; color:#064e3b;">اشتراكات الإشعارات:</h4>';
     html += data.subscribers.map(s => `
@@ -906,6 +945,7 @@ async function submitSub(e) {
   if (data.success) {
     e.target.reset();
     if (currentUser) loadMySubscriptions();
+    if (data.telegram_connect_url) showTelegramBanner(data.telegram_connect_url);
   }
 }
 
@@ -926,6 +966,7 @@ async function submitCourseRequest(e) {
   if (data.success) {
     e.target.reset();
     if (currentUser) loadMySubscriptions();
+    if (data.telegram_connect_url) showTelegramBanner(data.telegram_connect_url);
   }
 }
 
@@ -1023,6 +1064,7 @@ async function executeQuickTrack(name, email, cNo, cName, secNo, colName) {
       showToast(data.message, 'success');
       loadCourses();
       if (currentUser) loadMySubscriptions();
+      if (data.telegram_connect_url) showTelegramBanner(data.telegram_connect_url);
     } else {
       showToast(data.error || 'حدث خطأ أثناء التتبع', 'error');
     }
@@ -1077,6 +1119,48 @@ async function loadCourses() {
       <td style="text-align:center;">${trackBtn}</td>
     </tr>`;
   }).join('');
+}
+
+// ─────────────── TELEGRAM BANNER ───────────────
+function showTelegramBanner(url) {
+  // Remove existing banner if any
+  const existing = document.getElementById('tg-banner');
+  if (existing) existing.remove();
+
+  const banner = document.createElement('div');
+  banner.id = 'tg-banner';
+  banner.innerHTML = `
+    <div style="
+      position:fixed; bottom:90px; left:50%; transform:translateX(-50%);
+      background:linear-gradient(135deg,#1a1a2e,#16213e);
+      border:1px solid #229ED9; border-radius:16px;
+      padding:16px 24px; z-index:10000;
+      display:flex; align-items:center; gap:14px;
+      box-shadow:0 8px 32px rgba(34,158,217,.35);
+      min-width:300px; max-width:420px;
+    ">
+      <span style="font-size:2rem;">✈️</span>
+      <div style="flex:1;">
+        <div style="color:#fff;font-weight:700;font-size:.95rem;margin-bottom:4px;">فعّل الإشعارات الفورية عبر تلغرام</div>
+        <div style="color:#93c5fd;font-size:.8rem;">استقبل التنبيهات على تلغرام بدل الإيميل 🚀</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <a href="${url}" target="_blank" style="
+          background:#229ED9; color:#fff; text-decoration:none;
+          padding:8px 16px; border-radius:10px; font-weight:700;
+          font-size:.85rem; white-space:nowrap; text-align:center;
+        ">تفعيل الآن</a>
+        <button onclick="document.getElementById('tg-banner').remove()" style="
+          background:transparent; border:1px solid #374151;
+          color:#9ca3af; padding:4px; border-radius:8px;
+          font-size:.75rem; cursor:pointer;
+        ">لاحقاً</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(banner);
+  // Auto-dismiss after 30 seconds
+  setTimeout(() => { if (banner.parentNode) banner.remove(); }, 30000);
 }
 
 // ─────────────── TOAST ───────────────

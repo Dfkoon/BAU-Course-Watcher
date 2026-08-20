@@ -50,6 +50,18 @@ env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
 load_dotenv(dotenv_path=env_path)
 load_dotenv()
 
+# استيراد وحدة تلغرام المنفصلة
+from telegram_bot import (
+    telegram_bp,
+    set_db_path as _tg_set_db_path,
+    init_telegram_table,
+    get_or_create_telegram_link,
+    telegram_connect_url,
+    send_telegram_message,
+    get_telegram_chat_id,
+    is_telegram_ready,
+)
+
 # =========================================================================
 # Logging & Config
 # =========================================================================
@@ -611,50 +623,10 @@ def watcher_loop():
 # =========================================================================
 
 # =========================================================================
-# Telegram Notifications Engine
+# Telegram — blueprint مسجّل من telegram_bot.py
 # =========================================================================
-
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
-TELEGRAM_BOT_USERNAME = os.environ.get("TELEGRAM_BOT_USERNAME", "Makanak_BAUBot")
-
-def get_or_create_telegram_link(email):
-    email = email.lower().strip()
-    conn = get_db()
-    row = conn.execute("SELECT * FROM telegram_links WHERE email=?", (email,)).fetchone()
-    if row:
-        conn.close()
-        return dict(row)
-    token = str(uuid.uuid4())
-    conn.execute(
-        "INSERT INTO telegram_links(email, chat_id, link_token, created_at) VALUES(?,?,?,?)",
-        (email, None, token, datetime.now().isoformat())
-    )
-    conn.commit()
-    conn.close()
-    return {"email": email, "chat_id": None, "link_token": token}
-
-def telegram_connect_url(token):
-    return f"https://t.me/{TELEGRAM_BOT_USERNAME}?start={token}"
-
-def send_telegram_message(chat_id, text):
-    if not TELEGRAM_BOT_TOKEN:
-        return False
-    try:
-        resp = requests.post(f"{TELEGRAM_API_URL}/sendMessage", json={
-            "chat_id": chat_id, "text": text, "parse_mode": "HTML"
-        }, timeout=10)
-        return resp.ok
-    except Exception as e:
-        log.error(f"telegram send error: {e}")
-        return False
-
-def get_telegram_chat_id(email):
-    conn = get_db()
-    row = conn.execute("SELECT chat_id FROM telegram_links WHERE email=?", (email.lower().strip(),)).fetchone()
-    conn.close()
-    return row["chat_id"] if row and row["chat_id"] else None
-
+# (الدوال get_or_create_telegram_link, telegram_connect_url, send_telegram_message,
+#  get_telegram_chat_id مستوردة أعلاه من telegram_bot.py)
 
 def get_smtp_config():
     """تسترجع إعدادات البريد الإلكتروني ديناميكياً وتزيل المسافات من كلمة المرور تلقائياً."""
@@ -1004,6 +976,10 @@ def _get_stats():
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.environ.get("FLASK_SECRET", "bau-strict-2026")
 
+# تسجيل Blueprint الخاص بالبوت وضبط مسار الداتابيز
+_tg_set_db_path(DB_PATH)
+app.register_blueprint(telegram_bp)
+
 @app.after_request
 def add_security_and_cors_headers(response):
     response.headers["Access-Control-Allow-Origin"] = "*"
@@ -1260,33 +1236,9 @@ def unsubscribe_page():
     sse_broadcast("stats_update", _get_stats())
     return render_template("unsubscribed.html", success=True, message=f"تم إلغاء الاشتراك وحذفه بنجاح للطالب ({sub['name']}) للمادة [{sub['course_query']}].")
 
-# =========================================================================
-# Telegram Webhook
-# =========================================================================
 
-@app.route("/telegram/webhook", methods=["POST"])
-def telegram_webhook():
-    data = request.get_json(silent=True) or {}
-    message = data.get("message", {})
-    text = (message.get("text") or "").strip()
-    chat_id = message.get("chat", {}).get("id")
+# (webhook تلغرام مسجّل الآن عبر telegram_bp من telegram_bot.py)
 
-    if text.startswith("/start") and chat_id:
-        parts = text.split(" ")
-        if len(parts) > 1:
-            token = parts[1].strip()
-            conn = get_db()
-            row = conn.execute("SELECT * FROM telegram_links WHERE link_token=?", (token,)).fetchone()
-            if row:
-                conn.execute("UPDATE telegram_links SET chat_id=? WHERE link_token=?", (str(chat_id), token))
-                conn.commit()
-                send_telegram_message(chat_id, "تم تفعيل الإشعارات الفورية بنجاح ✅\nراح توصلك كل التحديثات على المواد اللي تتابعها فوراً هون.")
-            else:
-                send_telegram_message(chat_id, "الرابط غير صالح أو منتهي، جرب ترجع للموقع وتفعّل من جديد.")
-            conn.close()
-        else:
-            send_telegram_message(chat_id, "أهلاً فيك! لازم تفتح البوت من رابط التفعيل الموجود بموقع مكانك الجامعي.")
-    return "OK", 200
 
 # =========================================================================
 # Student Auth API (Google Sign-In & Guest)
