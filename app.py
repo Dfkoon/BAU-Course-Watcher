@@ -1784,7 +1784,7 @@ def _send_welcome_email(student_name, to_email, col_q, course_q):
         <div style="background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:12px; padding:16px; margin:20px 0; font-size:.9rem; color:#334155; line-height:1.7;">
           <strong style="color:#0f172a; display:block; margin-bottom:6px;">📌 لإدارة أو إلغاء اشتراكاتك:</strong>
           • يمكنك النقر على <strong>حسابك في أعلى نظام مكانك</strong> وإلغاء أو إدارة كافة اشتراكاتك السابقة بسهولة.<br>
-          • أو التواصل مع إدارة النظام عبر الهاتف: <strong style="color:#059669; direction:ltr; display:inline-block; font-size:1rem;">0682934685</strong><br>
+          • أو التواصل مع إدارة النظام عبر الهاتف: <strong style="color:#059669; direction:ltr; display:inline-block; font-size:1rem;">0782934685</strong><br>
           • أو الرد مباشرة على هذه الرسالة.
         </div>
         <a href="https://www.bau.edu.jo/Services/Reg.aspx" target="_blank" class="btn">اذهب لبوابة التسجيل الرسمية</a>
